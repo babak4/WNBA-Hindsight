@@ -283,6 +283,18 @@ One-time setup:
 
 If your account is on a plan that allows private Pages, change or remove the `if:` line in the workflow.
 
+### Adding a game from GitHub
+
+The **Add game** workflow (`.github/workflows/add-game.yml`) fetches a game on GitHub's servers and commits it to `data/`, so you don't need your laptop. Give it the game slug, which is the part of the URL after `/game/`:
+
+```bash
+gh workflow run add-game.yml -f slug=gsv-vs-atl-1042600303
+```
+
+or use **Actions → Add game → Run workflow** on GitHub. It fetches the page, runs the model tests, commits `data/<slug>.json` and the updated `data/index.json` to `main`, and starts the Pages deploy, so the new game appears in the drop-down a minute or so later.
+
+Options: `force=true` overwrites a game that is already in `data/` (otherwise it fails), and `dry_run=true` fetches and tests without committing or deploying. A failing test is reported in the run summary but does not stop the commit. The data comes from wnba.com, which may block GitHub's servers in future; if the fetch step fails, run `fetch_pbp.py` locally instead.
+
 ## Project layout
 
 ```
@@ -297,7 +309,8 @@ web/           static lead tracker page
   app.js       page wiring: drop-down, tabs, checkboxes, run cards
 tests/         Node tests for web/model.js
 index.html     redirects the site root to web/ (used by GitHub Pages)
-.github/workflows/pages.yml  deploys web/ and data/ to GitHub Pages
+.github/workflows/pages.yml     deploys web/ and data/ to GitHub Pages
+.github/workflows/add-game.yml  fetches a game by slug and commits it to data/
 CLAUDE.md      guidance for Claude Code
 ```
 
