@@ -1,4 +1,5 @@
 # Fetches one game's play-by-play from wnba.com and commits it to data/.
+# A game that is already in data/ is skipped unless `force` is set.
 #
 # Run it from the Actions tab ("Run workflow") or: gh workflow run add-game.yml -f slug=gsv-vs-atl-1042600303
 # The slug is the game part of the URL: https://www.wnba.com/game/<slug>/play-by-play
@@ -45,13 +46,24 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Skip if the game is already downloaded
+        id: check
+        run: |
+          if [ -f "data/$SLUG.json" ] && [ "$FORCE" != "true" ]; then
+            echo "Game $SLUG is already in data/; nothing to do (run with force to overwrite)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: astral-sh/setup-uv@v6
+        if: steps.check.outputs.skip != 'true'
 
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip != 'true'
         with:
           node-version: 22
 
       - name: Fetch game
+        if: steps.check.outputs.skip != 'true'
         run: |
           args=("https://www.wnba.com/game/${SLUG}/play-by-play")
           if [ "$FORCE" = "true" ]; then args+=(--force); fi
@@ -59,6 +71,7 @@ jobs:
 
       - name: Check derived stats against the box score
         id: tests
+        if: steps.check.outputs.skip != 'true'
         continue-on-error: true
         run: node --test tests/*.test.js
 
@@ -67,13 +80,17 @@ jobs:
         run: |
           {
             echo "### Add game: \`$SLUG\`"
+            if [ "${{ steps.check.outputs.skip }}" = "true" ]; then
+              echo "- skipped: already in \`data/\` (use force to overwrite)"
+              exit 0
+            fi
             if [ -f "data/$SLUG.json" ]; then echo "- fetched: \`data/$SLUG.json\` ($(wc -c < "data/$SLUG.json") bytes)"; fi
             echo "- tests: ${{ steps.tests.outcome }}"
             echo "- dry run: $DRY_RUN"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit and push
-        if: env.DRY_RUN != 'true'
+        if: steps.check.outputs.skip != 'true' && env.DRY_RUN != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
