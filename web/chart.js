@@ -6,10 +6,11 @@ const minus = (n) => (n < 0 ? "−" : "") + Math.abs(n);
 const signed = (n) => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n);
 
 /** period + clock text for an elapsed-seconds value */
-export function timeAt(elapsed, g) {
+export function timeAt(elapsed, g, asStart = false) {
   let t = elapsed, p = 1;
   const last = Math.max(...g.events.map((e) => e.period));
-  while (p < last && t > periodLength(p)) { t -= periodLength(p); p++; }
+  // A range that starts exactly on a period boundary starts at the top of the next period.
+  while (p < last && (asStart ? t >= periodLength(p) : t > periodLength(p))) { t -= periodLength(p); p++; }
   return `${periodName(p)} ${formatClock(Math.max(0, periodLength(p) - t))}`;
 }
 
@@ -18,7 +19,8 @@ let uid = 0;
 /**
  * @param {HTMLElement} el container
  * @param {object} g game from buildGame
- * @param {{runs: object[], showRuns: boolean, onRunHover: (n:number|null)=>void}} opts
+ * @param {{runs: object[], showRuns: boolean, onRunHover: (n:number|null)=>void,
+ *          onSelect: (sel: {from:number,to:number}|null) => void}} opts
  */
 export function createChart(el, g, opts) {
   const series = leadSeries(g);
@@ -26,7 +28,7 @@ export function createChart(el, g, opts) {
   const home = g.teams.home.teamTricode, away = g.teams.away.teamTricode;
   const id = `lt${++uid}`;
   let active = null;
-  let state = { showRuns: opts.showRuns };
+  let state = { showRuns: opts.showRuns, selection: null };
 
   // Zero stays on the chart, but each side only gets as much room as the biggest lead it needs.
   const maxHome = Math.max(0, ...series.map((p) => p.lead));
@@ -119,6 +121,10 @@ export function createChart(el, g, opts) {
     }
 
     s = mainSvg.replace("<!--wins-->", wins) + s;
+    s += `<g class="sel" pointer-events="none" visibility="hidden">
+      <rect class="sel-rect" y="${m.t}" height="${ph}"/>
+      <line class="sel-edge sel-l" y1="${m.t}" y2="${m.t + ph}"/><line class="sel-edge sel-r" y1="${m.t}" y2="${m.t + ph}"/>
+      <text class="sel-label ax-label" y="${m.t + 12}" text-anchor="middle"></text></g>`;
     s += `<g class="hover" visibility="hidden"><line class="cross" y1="${m.t}" y2="${m.t + ph}"/><circle class="cross-dot" r="4.5"/></g>`;
 
     const label = `Lead tracker: ${g.teams.home.teamName} ${g.teams.home.score}, ${g.teams.away.teamName} ${g.teams.away.score}. ` +
@@ -126,6 +132,28 @@ export function createChart(el, g, opts) {
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(label)}">${s}</svg><div class="tooltip" hidden></div>`;
     bind();
     applyActive();
+    paintSel(state.selection);
+  }
+
+  const snap = (t) => Math.round(Math.min(total, Math.max(0, t)));
+
+  /** Show (or hide) the selection overlay without redrawing the chart. */
+  function paintSel(sel) {
+    const g0 = el.querySelector(".sel");
+    if (!g0) return;
+    if (!sel) { g0.setAttribute("visibility", "hidden"); return; }
+    const { x, m, pw } = geo;
+    const x1 = x(sel.from), x2 = x(sel.to);
+    g0.setAttribute("visibility", "visible");
+    const r = g0.querySelector(".sel-rect");
+    r.setAttribute("x", x1); r.setAttribute("width", Math.max(1, x2 - x1));
+    for (const [cls, v] of [[".sel-l", x1], [".sel-r", x2]]) {
+      const l = g0.querySelector(cls); l.setAttribute("x1", v); l.setAttribute("x2", v);
+    }
+    const label = g0.querySelector(".sel-label");
+    label.textContent = `${timeAt(sel.from, g, true)} – ${timeAt(sel.to, g)}`;
+    const half = 60;
+    label.setAttribute("x", Math.min(m.l + pw - half, Math.max(m.l + half, (x1 + x2) / 2)));
   }
 
   function applyActive() {
@@ -155,10 +183,58 @@ export function createChart(el, g, opts) {
     };
     const hide = () => { tip.hidden = true; hover.setAttribute("visibility", "hidden"); };
 
-    svg.addEventListener("pointermove", (ev) => {
+    const toPx = (ev) => {
       const box = svg.getBoundingClientRect();
-      const px = ((ev.clientX - box.left) / box.width) * geo.W;
-      const py = ((ev.clientY - box.top) / box.height) * geo.H;
+      return { px: ((ev.clientX - box.left) / box.width) * geo.W, py: ((ev.clientY - box.top) / box.height) * geo.H };
+    };
+    const toTime = (px) => ((Math.min(m.l + pw, Math.max(m.l, px)) - m.l) / pw) * total;
+    let drag = null;
+
+    svg.addEventListener("pointerdown", (ev) => {
+      if (ev.button > 0 || ev.target.closest("[data-run]")) return;
+      const { px, py } = toPx(ev);
+      if (px < m.l || px > m.l + pw || py < m.t || py > m.t + ph) return;
+      drag = { id: ev.pointerId, px0: px, t0: toTime(px), moved: false };
+      svg.setPointerCapture(ev.pointerId);
+      hide();
+    });
+    const endDrag = (ev, commit) => {
+      if (!drag || ev.pointerId !== drag.id) return;
+      const d = drag;
+      drag = null;
+      svg.classList.remove("dragging");
+      if (!commit) { paintSel(state.selection); return; }
+      if (d.moved) {
+        const { px } = toPx(ev);
+        const a = snap(Math.min(d.t0, toTime(px))), b = snap(Math.max(d.t0, toTime(px)));
+        if (b > a) {
+          state = { ...state, selection: { from: a, to: b } };
+          paintSel(state.selection);
+          opts.onSelect(state.selection);
+          return;
+        }
+      }
+      // a plain click clears the selection
+      if (state.selection) {
+        state = { ...state, selection: null };
+        paintSel(null);
+        opts.onSelect(null);
+      }
+    };
+    svg.addEventListener("pointerup", (ev) => endDrag(ev, true));
+    svg.addEventListener("pointercancel", (ev) => endDrag(ev, false));
+
+    svg.addEventListener("pointermove", (ev) => {
+      const { px, py } = toPx(ev);
+      if (drag && ev.pointerId === drag.id) {
+        if (Math.abs(px - drag.px0) > 4) drag.moved = true;
+        if (drag.moved) {
+          svg.classList.add("dragging");
+          const t = toTime(px);
+          paintSel({ from: Math.min(drag.t0, t), to: Math.max(drag.t0, t) });
+        }
+        return;
+      }
       const runEl = ev.target.closest("[data-run]");
       if (runEl) {
         const r = opts.runs.find((q) => q.number === Number(runEl.dataset.run));
@@ -201,6 +277,8 @@ export function createChart(el, g, opts) {
 
   return {
     setShowRuns(v) { state = { ...state, showRuns: v }; draw(); },
+    /** Set or clear the selected period from outside (e.g. the quarter buttons). */
+    setSelection(sel) { state = { ...state, selection: sel }; paintSel(sel); },
     setActive,
     destroy() { ro.disconnect(); el.innerHTML = ""; },
   };

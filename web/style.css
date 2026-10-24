@@ -185,3 +185,22 @@ g[data-run].active .run-badge { stroke-width: 3; }
 .stats-table tbody tr:hover td { background: var(--surface-0); }
 .stats-table tfoot td { font-weight: 600; border-top: 2px solid var(--grid); border-bottom: 0; }
 .stats-table .metric:not(.left) { background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
+
+/* Period selection */
+.brush-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 4px 8px; font-size: 0.85rem; color: var(--text-secondary); }
+.chips { display: flex; gap: 6px; }
+.chip {
+  font: inherit; font-size: 0.82rem; color: var(--text-primary); background: var(--surface-0);
+  border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; cursor: pointer;
+}
+.chip:hover { border-color: var(--text-muted); }
+.chip[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
+.link-btn { font: inherit; font-size: 0.82rem; color: var(--text-secondary); background: none; border: 0; text-decoration: underline; cursor: pointer; padding: 3px 4px; }
+.link-btn:hover { color: var(--text-primary); }
+.chart svg { cursor: crosshair; user-select: none; -webkit-user-select: none; }
+.chart svg.dragging { cursor: ew-resize; }
+.sel-rect { fill: var(--text-primary); fill-opacity: 0.1; }
+.sel-edge { stroke: var(--text-primary); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.sel-label { paint-order: stroke; stroke: var(--surface-1); stroke-width: 4px; stroke-linejoin: round; fill: var(--text-primary); font-weight: 600; }
+.selection { margin-top: 16px; }
+.selection-card { border-left-color: var(--text-primary); }

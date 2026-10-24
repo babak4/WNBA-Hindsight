@@ -1,4 +1,4 @@
-import { buildGame, findRuns, runReport, leadSeries, periodName } from "./model.js";
+import { buildGame, findRuns, runReport, leadSeries, periodName, periodRanges, selectionSummary } from "./model.js";
 import { createChart, timeAt } from "./chart.js";
 import { renderStats } from "./statsView.js";
 
@@ -8,6 +8,7 @@ const els = {
   summary: $("game-summary"), message: $("message"), legend: $("legend"), chart: $("chart"),
   note: $("chart-note"), runList: $("runs"), tableView: $("table-view"), table: $("plays-table"),
   stats: $("stats"),
+  selection: $("selection"), chips: $("period-chips"), clearSel: $("clear-selection"),
   tabs: [$("tab-lead"), $("tab-stats")],
   panels: [$("panel-lead"), $("panel-stats")],
 };
@@ -17,6 +18,7 @@ const num = (n, dp = 0) => (n < 0 ? "−" : "") + Math.abs(n).toFixed(dp);
 
 let index = [];
 let game = null, runs = [], chart = null;
+let selection = null; // {from, to} in elapsed game seconds, picked on the chart
 const cache = new Map();
 
 const slugNumber = (slug) => Number(/(\d+)$/.exec(slug)?.[1] ?? -1);
@@ -91,7 +93,11 @@ function renderAll(entry) {
     runs,
     showRuns: els.runs.checked,
     onRunHover: (n) => setActiveRun(n),
+    onSelect: (sel) => setSelection(sel, false),
   });
+  selection = null;
+  renderChips();
+  renderSelection();
 
   renderRunCards();
   renderTable();
@@ -127,6 +133,32 @@ function who(list, key, fmt) {
   return `<span class="names">${names}</span><span class="val">${fmt(list.value)}</span>`;
 }
 
+/** Best/worst blocks plus the all-players table, shared by run cards and the selected-period card. */
+function reportBody(rep, noun) {
+  const metric = (title, m, key, fmt) => `
+    <div class="metric"><h4>${title}</h4>
+      <div class="who"><span class="tag">Best</span>${who(m.best, key, fmt)}</div>
+      <div class="who"><span class="tag">Worst</span>${who(m.worst, key, fmt)}</div>
+    </div>`;
+  const rows = rep.players.map((p) => {
+    const s = p.stats;
+    return `<tr><td>${esc(p.name)}</td><td>${esc(p.tricode)}</td><td>${s.pts}</td><td>${s.fgm}/${s.fga}</td><td>${s.ftm}/${s.fta}</td>` +
+      `<td>${s.oreb + s.dreb}</td><td>${s.ast}</td><td>${s.stl}</td><td>${s.blk}</td><td>${s.pf}</td><td>${s.tov}</td>` +
+      `<td>${num(p.gameScore, 1)}</td><td>${num(p.eff)}</td></tr>`;
+  }).join("");
+  return `
+    <div class="metrics">
+      ${metric("Game Score", rep.gameScore, "gameScore", (v) => num(v, 1))}
+      ${metric("Efficiency (EFF)", rep.eff, "eff", (v) => num(v))}
+    </div>
+    <details><summary>All ${rep.players.length} players in this ${noun}</summary>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Player</th><th>Tm</th><th>PTS</th><th>FG</th><th>FT</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>PF</th><th>TO</th><th>GmSc</th><th>EFF</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </details>`;
+}
+
 function renderRunCards() {
   const { home, away } = game.teams;
   els.runList.innerHTML = runs.map((r) => {
@@ -135,32 +167,12 @@ function renderRunCards() {
     const when = r.startPeriod === r.endPeriod
       ? `${periodName(r.startPeriod)} ${r.startClock} – ${r.endClock}`
       : `${periodName(r.startPeriod)} ${r.startClock} – ${periodName(r.endPeriod)} ${r.endClock}`;
-    const metric = (title, m, key, fmt) => `
-      <div class="metric"><h4>${title}</h4>
-        <div class="who"><span class="tag">Best</span>${who(m.best, key, fmt)}</div>
-        <div class="who"><span class="tag">Worst</span>${who(m.worst, key, fmt)}</div>
-      </div>`;
-    const rows = rep.players.map((p) => {
-      const s = p.stats;
-      return `<tr><td>${esc(p.name)}</td><td>${esc(p.tricode)}</td><td>${s.pts}</td><td>${s.fgm}/${s.fga}</td><td>${s.ftm}/${s.fta}</td>` +
-        `<td>${s.oreb + s.dreb}</td><td>${s.ast}</td><td>${s.stl}</td><td>${s.blk}</td><td>${s.pf}</td><td>${s.tov}</td>` +
-        `<td>${num(p.gameScore, 1)}</td><td>${num(p.eff)}</td></tr>`;
-    }).join("");
     return `
     <article class="run-card ${r.side}" data-run="${r.number}">
       <h3><span class="num">#${r.number}</span> ${esc(side.teamTricode)} ${r.points}–0 run</h3>
       <p class="when">${when} · ${esc(home.teamTricode)} ${r.scoreBefore.home}–${r.scoreBefore.away} ${esc(away.teamTricode)}
         → ${r.scoreAfter.home}–${r.scoreAfter.away}</p>
-      <div class="metrics">
-        ${metric("Game Score", rep.gameScore, "gameScore", (v) => num(v, 1))}
-        ${metric("Efficiency (EFF)", rep.eff, "eff", (v) => num(v))}
-      </div>
-      <details><summary>All ${rep.players.length} players in this run</summary>
-        <div class="table-scroll"><table>
-          <thead><tr><th>Player</th><th>Tm</th><th>PTS</th><th>FG</th><th>FT</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>PF</th><th>TO</th><th>GmSc</th><th>EFF</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-      </details>
+      ${reportBody(rep, "run")}
     </article>`;
   }).join("");
 
@@ -172,6 +184,60 @@ function renderRunCards() {
     card.addEventListener("focusout", () => setActiveRun(null));
   }
 }
+
+// Selected period (drag on the chart, or a quarter button)
+const sameSel = (a, b) => !!a && !!b && a.from === b.from && a.to === b.to;
+
+function renderChips() {
+  els.chips.innerHTML = periodRanges(game)
+    .map((r) => `<button type="button" class="chip" data-from="${r.from}" data-to="${r.to}" aria-pressed="false">${esc(r.name)}</button>`)
+    .join("");
+}
+
+function setSelection(sel, pushToChart = true) {
+  selection = sel;
+  if (pushToChart) chart?.setSelection(sel);
+  renderSelection();
+}
+
+function renderSelection() {
+  for (const b of els.chips.querySelectorAll(".chip")) {
+    b.setAttribute("aria-pressed", String(sameSel(selection, { from: Number(b.dataset.from), to: Number(b.dataset.to) })));
+  }
+  els.clearSel.hidden = !selection;
+  els.selection.hidden = !selection;
+  if (!selection) { els.selection.innerHTML = ""; return; }
+
+  const { home, away } = game.teams;
+  const sum = selectionSummary(game, selection.from, selection.to);
+  const span = selection.to - selection.from;
+  const title = `${timeAt(selection.from, game, true)} – ${timeAt(selection.to, game)}`;
+  let body;
+  if (!sum.range) {
+    body = `<p class="when">No plays were recorded in this period.</p>`;
+  } else {
+    const dh = sum.scoreAfter.home - sum.scoreBefore.home, da = sum.scoreAfter.away - sum.scoreBefore.away;
+    body = `<p class="when">${Math.floor(span / 60)}:${String(span % 60).padStart(2, "0")} of game time · ` +
+      `${esc(home.teamTricode)} ${sum.scoreBefore.home}–${sum.scoreBefore.away} ${esc(away.teamTricode)} → ` +
+      `${sum.scoreAfter.home}–${sum.scoreAfter.away} · ${esc(home.teamTricode)} scored ${dh}, ${esc(away.teamTricode)} scored ${da}</p>` +
+      (sum.report.players.length
+        ? reportBody(sum.report, "period")
+        : `<p class="when">No player actions were recorded in this period.</p>`);
+  }
+  els.selection.innerHTML = `
+    <article class="run-card selection-card">
+      <h3>Selected period <span class="num">${esc(title)}</span></h3>
+      ${body}
+    </article>`;
+}
+
+els.chips.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".chip");
+  if (!b) return;
+  const sel = { from: Number(b.dataset.from), to: Number(b.dataset.to) };
+  setSelection(sameSel(selection, sel) ? null : sel);
+});
+els.clearSel.addEventListener("click", () => setSelection(null));
 
 function renderTable() {
   const { home, away } = game.teams;

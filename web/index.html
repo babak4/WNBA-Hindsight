@@ -42,9 +42,16 @@
 
       <section class="chart-card" aria-label="Lead tracker chart">
         <ul class="legend" id="legend" aria-label="Legend"></ul>
+        <div class="brush-bar">
+          <span class="brush-help">Select a period: drag across the chart, or pick</span>
+          <div class="chips" id="period-chips" role="group" aria-label="Select a period"></div>
+          <button type="button" class="link-btn" id="clear-selection" hidden>Clear selection</button>
+        </div>
         <div id="chart" class="chart"></div>
         <p id="chart-note" class="note" hidden></p>
       </section>
+
+      <section id="selection" class="selection" aria-label="Selected period" aria-live="polite" hidden></section>
 
       <section id="runs" class="runs" aria-label="Runs" hidden></section>
 

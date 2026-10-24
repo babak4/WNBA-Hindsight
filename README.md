@@ -244,8 +244,9 @@ It has to be served over HTTP because it loads the JSON with `fetch`; opening `w
 ### Lead tracker tab
 
 - **Lead tracker**: the home-minus-away score margin over the 40 minutes of the game (5-minute periods are added for overtime). It rises above zero when the home team leads and falls below when the away team does. Hover for the time, score, lead and the most recent scoring play.
+- **Select a period**: drag across the chart (left to right or right to left) to pick any stretch of the game, or use the **Q1–Q4** buttons (and **OT** if the game has overtime) to pick a whole period. A card appears under the chart with the score change, which team scored how much, the best and worst player by Game Score and by EFF, and an expandable table of every player in that stretch. Click the chart, press the same period button again, or use **Clear selection** to remove it. Selections snap to whole seconds and are not kept when you switch games.
 - **Highlight runs**: draws a numbered arrow over each run, a stretch where one team scores 7 or more points in a row and the other scores none. The arrow goes from the lead before the run's first score to the lead after its last. Runs can span quarters.
-- **Best / worst players in each run** (needs run highlighting on): one card per run with the best and worst player by Game Score and by EFF, plus an expandable table of every player in the run. Hovering a card shades its window on the chart, and hovering an arrow highlights its card.
+- **Best / worst players in each run** (needs run highlighting on; the selected-period card above works without it): one card per run with the best and worst player by Game Score and by EFF, plus an expandable table of every player in the run. Hovering a card shades its window on the chart, and hovering an arrow highlights its card.
 
 ### Player stats tab
 

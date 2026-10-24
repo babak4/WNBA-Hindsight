@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { playerGameStats, buildGame, findRuns, runReport, teamTotals, leadSeries, gameScore, efficiency, parseClock, elapsedSeconds, formatClock } from "../web/model.js";
+import { eventRange, periodRanges, selectionSummary, windowReport, playerGameStats, buildGame, findRuns, runReport, teamTotals, leadSeries, gameScore, efficiency, parseClock, elapsedSeconds, formatClock } from "../web/model.js";
 
 const dataDir = new URL("../data/", import.meta.url);
 const files = readdirSync(dataDir).filter((f) => f.endsWith(".json") && f !== "index.json");
@@ -66,6 +66,30 @@ for (const f of files) {
       assert.ok(list.length >= withStats.size && list.length <= g.game[`${side}TeamPlayers`].length);
       assert.equal(list.reduce((n, p) => n + p.stats.pts, 0), t[side].pts);
     }
+  });
+
+  test(`${f}: period selections partition the game`, () => {
+    const total = teamTotals(g);
+    const sum = { home: {}, away: {} };
+    let events = 0;
+    for (const r of periodRanges(g)) {
+      const sel = selectionSummary(g, r.from, r.to);
+      assert.ok(sel.range, `${r.name} has events`);
+      events += sel.range.end - sel.range.start + 1;
+      for (const p of sel.report.players) {
+        for (const [k, v] of Object.entries(p.stats)) sum[p.side][k] = (sum[p.side][k] ?? 0) + v;
+      }
+    }
+    assert.equal(events, g.events.length, "every event is in exactly one period");
+    for (const side of ["home", "away"]) {
+      for (const k of ["pts", "fgm", "fga", "tpm", "tpa", "ftm", "fta", "ast", "stl", "blk", "pf", "tov", "oreb", "dreb"]) {
+        assert.equal(sum[side][k], total[side][k], `${side} ${k}`);
+      }
+    }
+    const whole = selectionSummary(g, 0, 99999);
+    assert.deepEqual(whole.scoreAfter, { home: g.teams.home.score, away: g.teams.away.score });
+    assert.deepEqual(whole.scoreBefore, { home: 0, away: 0 });
+    assert.equal(eventRange(g, 5000, 6000), null);
   });
 
   test(`${f}: lead series is consistent`, () => {

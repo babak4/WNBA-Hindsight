@@ -260,13 +260,64 @@ function extremes(list, key) {
   return { best: { value: best, players: pick(best) }, worst: { value: worst, players: pick(worst) } };
 }
 
-export function runReport(g, run) {
-  const players = windowStats(g, run.windowStart, run.windowEnd)
+/** Best/worst report for events[start..end] (inclusive). */
+export function windowReport(g, start, end) {
+  const players = windowStats(g, start, end)
     .sort((a, b) => b.gameScore - a.gameScore || b.eff - a.eff);
   return {
     players,
     gameScore: players.length ? extremes(players, "gameScore") : null,
     eff: players.length ? extremes(players, "eff") : null,
+  };
+}
+
+export function runReport(g, run) {
+  return windowReport(g, run.windowStart, run.windowEnd);
+}
+
+/**
+ * Events inside a time range of elapsed game seconds, as {start, end} event indexes, or null if none.
+ * The range is (from, to]: an event exactly at `from` belongs to the previous range, so
+ * consecutive ranges (such as quarters) never count an event twice. A range starting at 0 includes
+ * everything from tip-off.
+ */
+export function eventRange(g, from, to) {
+  const lo = from <= 0 ? -Infinity : from;
+  let start = -1, end = -1;
+  for (const e of g.events) {
+    if (e.elapsed > lo && e.elapsed <= to) {
+      if (start < 0) start = e.index;
+      end = e.index;
+    }
+  }
+  return start < 0 ? null : { start, end };
+}
+
+/** One entry per period: {period, name, from, to} in elapsed seconds. */
+export function periodRanges(g) {
+  const last = Math.max(...g.events.map((e) => e.period));
+  const out = [];
+  let t = 0;
+  for (let p = 1; p <= last; p++) {
+    out.push({ period: p, name: periodName(p), from: t, to: t + periodLength(p) });
+    t += periodLength(p);
+  }
+  return out;
+}
+
+/** Score change and best/worst players over a time range picked on the chart. */
+export function selectionSummary(g, from, to) {
+  const range = eventRange(g, from, to);
+  if (!range) return { from, to, range: null, scoreBefore: null, scoreAfter: null, report: null };
+  const before = range.start > 0 ? g.events[range.start - 1] : null;
+  const after = g.events[range.end];
+  return {
+    from,
+    to,
+    range,
+    scoreBefore: { home: before ? before.scoreHome : 0, away: before ? before.scoreAway : 0 },
+    scoreAfter: { home: after.scoreHome, away: after.scoreAway },
+    report: windowReport(g, range.start, range.end),
   };
 }
 
