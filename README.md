@@ -293,7 +293,7 @@ gh workflow run add-game.yml -f slug=gsv-vs-atl-1042600303
 
 or use **Actions → Add game → Run workflow** on GitHub. It fetches the page, runs the model tests, commits `data/<slug>.json` and the updated `data/index.json` to `main`, and starts the Pages deploy, so the new game appears in the drop-down a minute or so later.
 
-Options: `force=true` overwrites a game that is already in `data/` (otherwise it fails), and `dry_run=true` fetches and tests without committing or deploying. A failing test is reported in the run summary but does not stop the commit. The data comes from wnba.com, which may block GitHub's servers in future; if the fetch step fails, run `fetch_pbp.py` locally instead.
+Options: If the game is already in `data/`, the run ends early as a skipped, successful run and changes nothing; `force=true` overwrites it instead, and `dry_run=true` fetches and tests without committing or deploying. A failing test is reported in the run summary but does not stop the commit. The data comes from wnba.com, which may block GitHub's servers in future; if the fetch step fails, run `fetch_pbp.py` locally instead.
 
 ## Project layout
 
