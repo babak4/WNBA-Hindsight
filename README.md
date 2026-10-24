@@ -271,6 +271,18 @@ node --test tests/
 
 These need Node 22 or newer, and run the logic in `web/model.js` against every game in `data/`. They check, for example, that the final score matches the published score and that the stats derived from the plays add up to the published team box score (points, FG, 3P, FT, assists, steals, blocks and personal fouls match exactly).
 
+## Hosting on GitHub Pages
+
+The viewer is static, so it can be published as-is. `.github/workflows/pages.yml` builds a small site from `web/`, `data/` and a root `index.html` (which redirects to `web/`) and deploys it to GitHub Pages. The site ends up at `https://<user>.github.io/<repo>/`.
+
+One-time setup:
+
+1. Make the repository public. Pages on a free GitHub account needs that, and the workflow skips its job (it does not fail) while the repo is private. Note that this publishes everything in `data/`, which is the full page payload that wnba.com sends, not just the plays.
+2. Go to **Settings → Pages** and set **Source** to **GitHub Actions**.
+3. Push to `main` (or run the workflow from the **Actions** tab). Later pushes redeploy automatically, so adding a game is: `uv run fetch_pbp.py <url>`, commit `data/`, push.
+
+If your account is on a plan that allows private Pages, change or remove the `if:` line in the workflow.
+
 ## Project layout
 
 ```
@@ -284,6 +296,8 @@ web/           static lead tracker page
   statsView.js Player stats tab (sortable tables)
   app.js       page wiring: drop-down, tabs, checkboxes, run cards
 tests/         Node tests for web/model.js
+index.html     redirects the site root to web/ (used by GitHub Pages)
+.github/workflows/pages.yml  deploys web/ and data/ to GitHub Pages
 CLAUDE.md      guidance for Claude Code
 ```
 
