@@ -240,7 +240,7 @@ uv run python -m http.server 8000
 
 It has to be served over HTTP because it loads the JSON with `fetch`; opening `web/index.html` directly from disk will not work.
 
-- **Game drop-down**: lists every game in `data/`, newest first. The list comes from `data/index.json`, which `fetch_pbp.py` rebuilds after every download. If you add or delete files in `data/` by hand, run `uv run index_games.py`. The selected game is kept in the URL (`#slug`) so it can be bookmarked.
+- **Game drop-down**: lists every game in `data/`, highest game number first (the digits at the end of the slug), and the page opens on that first game. The list comes from `data/index.json`, which `fetch_pbp.py` rebuilds after every download. If you add or delete files in `data/` by hand, run `uv run index_games.py`. Choosing a game puts it in the URL (`#slug`), so that choice can be bookmarked and survives a reload; a visit without a `#slug` always opens the highest-numbered game.
 ### Lead tracker tab
 
 - **Lead tracker**: the home-minus-away score margin over the 40 minutes of the game (5-minute periods are added for overtime). It rises above zero when the home team leads and falls below when the away team does. Hover for the time, score, lead and the most recent scoring play.

@@ -19,6 +19,8 @@ let index = [];
 let game = null, runs = [], chart = null;
 const cache = new Map();
 
+const slugNumber = (slug) => Number(/(\d+)$/.exec(slug)?.[1] ?? -1);
+
 function say(html) { els.message.innerHTML = html; els.message.hidden = !html; }
 
 function dateText(gameEt) {
@@ -36,6 +38,8 @@ async function init() {
     const res = await fetch("../data/index.json", { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     index = (await res.json()).games;
+    // Highest game number (the digits at the end of the slug) first, so the top option is the default.
+    index.sort((a, b) => slugNumber(b.slug) - slugNumber(a.slug) || b.slug.localeCompare(a.slug));
   } catch (err) {
     say(`Could not load <code>data/index.json</code> (${esc(err.message)}). Serve the project folder over HTTP ` +
         `(<code>uv run python -m http.server 8000</code>, then open <code>http://localhost:8000/web/</code>); ` +
@@ -68,7 +72,6 @@ async function loadGame(slug) {
     say(`Could not load ${esc(entry.file)}: ${esc(err.message)}`);
     return;
   }
-  history.replaceState(null, "", `#${encodeURIComponent(slug)}`);
   game = cache.get(slug);
   runs = findRuns(game);
   renderAll(entry);
@@ -199,7 +202,11 @@ els.tabs.forEach((t, i) => {
   });
 });
 
-els.select.addEventListener("change", () => loadGame(els.select.value));
+els.select.addEventListener("change", () => {
+  // Only an explicit choice goes into the URL, so a plain visit or reload still opens the highest-numbered game.
+  history.replaceState(null, "", `#${encodeURIComponent(els.select.value)}`);
+  loadGame(els.select.value);
+});
 els.runs.addEventListener("change", () => {
   if (!els.runs.checked) els.players.checked = false;
   syncControls();
