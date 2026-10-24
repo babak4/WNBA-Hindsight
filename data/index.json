@@ -1,6 +1,26 @@
 {
   "games": [
     {
+      "slug": "gsv-vs-atl-1042600304",
+      "file": "gsv-vs-atl-1042600304.json",
+      "gameId": "1042600304",
+      "gameEt": "2026-10-24T13:00:00Z",
+      "status": "Final",
+      "label": "WNBA Finals Game 4",
+      "home": {
+        "tricode": "ATL",
+        "city": "Atlanta",
+        "name": "Dream",
+        "score": 62
+      },
+      "away": {
+        "tricode": "GSV",
+        "city": "Golden State",
+        "name": "Valkyries",
+        "score": 67
+      }
+    },
+    {
       "slug": "gsv-vs-atl-1042600303",
       "file": "gsv-vs-atl-1042600303.json",
       "gameId": "1042600303",
