@@ -11,6 +11,7 @@
   --home: #2a78d6;   /* categorical slot 1 */
   --away: #eb6834;   /* categorical slot 2 */
   --focus: #2a78d6;
+  --sel: #6250d6;    /* period selection (categorical violet, not a team color) */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -26,6 +27,7 @@
     --home: #3987e5;
     --away: #d95926;
     --focus: #6aa6ee;
+    --sel: #9085e9;
   }
 }
 
@@ -199,8 +201,12 @@ g[data-run].active .run-badge { stroke-width: 3; }
 .link-btn:hover { color: var(--text-primary); }
 .chart svg { cursor: crosshair; user-select: none; -webkit-user-select: none; }
 .chart svg.dragging { cursor: ew-resize; }
-.sel-rect { fill: var(--text-primary); fill-opacity: 0.1; }
-.sel-edge { stroke: var(--text-primary); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.sel-rect { fill: var(--sel); fill-opacity: 0.22; }
+.sel-edge { stroke: var(--sel); stroke-width: 2; }
 .sel-label { paint-order: stroke; stroke: var(--surface-1); stroke-width: 4px; stroke-linejoin: round; fill: var(--text-primary); font-weight: 600; }
+/* no browser text/element highlight on the chart, and none anywhere while a selection drag is in progress */
+.chart svg *::selection, .chart svg::selection { background: transparent; }
+body.brushing, body.brushing * { user-select: none !important; -webkit-user-select: none !important; cursor: ew-resize !important; }
+body.brushing ::selection { background: transparent !important; }
 .selection { margin-top: 16px; }
 .selection-card { border-left-color: var(--text-primary); }

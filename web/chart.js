@@ -190,19 +190,39 @@ export function createChart(el, g, opts) {
     const toTime = (px) => ((Math.min(m.l + pw, Math.max(m.l, px)) - m.l) / pw) * total;
     let drag = null;
 
+    // While a drag is in progress the browser must not start its own text/element selection
+    // (Safari otherwise highlights the whole chart and anything the pointer drifts over).
+    const noSelect = (ev) => ev.preventDefault();
+    const startBrushing = () => {
+      document.body.classList.add("brushing");
+      document.addEventListener("selectstart", noSelect);
+      document.addEventListener("dragstart", noSelect);
+      getSelection()?.removeAllRanges();
+    };
+    const stopBrushing = () => {
+      document.body.classList.remove("brushing");
+      document.removeEventListener("selectstart", noSelect);
+      document.removeEventListener("dragstart", noSelect);
+    };
+
     svg.addEventListener("pointerdown", (ev) => {
       if (ev.button > 0 || ev.target.closest("[data-run]")) return;
       const { px, py } = toPx(ev);
       if (px < m.l || px > m.l + pw || py < m.t || py > m.t + ph) return;
+      ev.preventDefault();
       drag = { id: ev.pointerId, px0: px, t0: toTime(px), moved: false };
-      svg.setPointerCapture(ev.pointerId);
+      try { svg.setPointerCapture(ev.pointerId); } catch { /* the window listeners below still end the drag */ }
+      startBrushing();
       hide();
+      svg.classList.add("dragging");
+      paintSel({ from: snap(drag.t0), to: snap(drag.t0) }); // a line at the press point: the selection has started
     });
     const endDrag = (ev, commit) => {
       if (!drag || ev.pointerId !== drag.id) return;
       const d = drag;
       drag = null;
       svg.classList.remove("dragging");
+      stopBrushing();
       if (!commit) { paintSel(state.selection); return; }
       if (d.moved) {
         const { px } = toPx(ev);
@@ -223,16 +243,15 @@ export function createChart(el, g, opts) {
     };
     svg.addEventListener("pointerup", (ev) => endDrag(ev, true));
     svg.addEventListener("pointercancel", (ev) => endDrag(ev, false));
+    // If the button is released outside the page, or capture did not take, still finish the drag.
+    window.addEventListener("pointerup", (ev) => endDrag(ev, true), { once: false });
 
     svg.addEventListener("pointermove", (ev) => {
       const { px, py } = toPx(ev);
       if (drag && ev.pointerId === drag.id) {
         if (Math.abs(px - drag.px0) > 4) drag.moved = true;
-        if (drag.moved) {
-          svg.classList.add("dragging");
-          const t = toTime(px);
-          paintSel({ from: Math.min(drag.t0, t), to: Math.max(drag.t0, t) });
-        }
+        const t = toTime(px);
+        paintSel({ from: snap(Math.min(drag.t0, t)), to: snap(Math.max(drag.t0, t)) });
         return;
       }
       const runEl = ev.target.closest("[data-run]");
