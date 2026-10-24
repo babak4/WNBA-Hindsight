@@ -1,0 +1,94 @@
+# Fetches one game's play-by-play from wnba.com and commits it to data/.
+#
+# Run it from the Actions tab ("Run workflow") or: gh workflow run add-game.yml -f slug=gsv-vs-atl-1042600303
+# The slug is the game part of the URL: https://www.wnba.com/game/<slug>/play-by-play
+name: Add game
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Game slug, e.g. gsv-vs-atl-1042600303"
+        required: true
+        type: string
+      force:
+        description: "Overwrite the game if it is already in data/"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Fetch and test only; do not commit or deploy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # push the new data file
+  actions: write    # start the Pages deploy (pushes made with GITHUB_TOKEN do not trigger it)
+
+concurrency:
+  group: add-game
+  cancel-in-progress: false
+
+jobs:
+  add-game:
+    runs-on: ubuntu-latest
+    env:
+      SLUG: ${{ inputs.slug }}
+      FORCE: ${{ inputs.force }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - name: Validate slug
+        run: |
+          if ! [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*-[0-9]+$ ]]; then
+            echo "::error::'$SLUG' is not a game slug (expected something like gsv-vs-atl-1042600303)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch game
+        run: |
+          args=("https://www.wnba.com/game/${SLUG}/play-by-play")
+          if [ "$FORCE" = "true" ]; then args+=(--force); fi
+          uv run fetch_pbp.py "${args[@]}"
+
+      - name: Check derived stats against the box score
+        id: tests
+        continue-on-error: true
+        run: node --test tests/*.test.js
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Add game: \`$SLUG\`"
+            if [ -f "data/$SLUG.json" ]; then echo "- fetched: \`data/$SLUG.json\` ($(wc -c < "data/$SLUG.json") bytes)"; fi
+            echo "- tests: ${{ steps.tests.outcome }}"
+            echo "- dry run: $DRY_RUN"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit and push
+        if: env.DRY_RUN != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "data/$SLUG.json" data/index.json
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "Add game $SLUG"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "COMMITTED=true" >> "$GITHUB_ENV"
+
+      - name: Deploy to Pages
+        if: env.COMMITTED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref "$GITHUB_REF_NAME"
