@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WNBA Play-by-Play</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="page-head">
+      <h1>WNBA play-by-play</h1>
+      <p id="game-summary" class="summary" aria-live="polite"></p>
+    </header>
+
+    <section class="controls" aria-label="Game">
+      <div class="field">
+        <label for="game-select">Game</label>
+        <select id="game-select" disabled><option>Loading…</option></select>
+      </div>
+    </section>
+
+    <p id="message" class="message" role="status" hidden></p>
+
+    <div class="tabs" role="tablist" aria-label="Views">
+      <button type="button" role="tab" id="tab-lead" aria-controls="panel-lead" aria-selected="true">Lead tracker</button>
+      <button type="button" role="tab" id="tab-stats" aria-controls="panel-stats" aria-selected="false" tabindex="-1">Player stats</button>
+    </div>
+
+    <div role="tabpanel" id="panel-lead" aria-labelledby="tab-lead" tabindex="0">
+      <section class="controls" aria-label="Lead tracker options">
+        <label class="check">
+          <input type="checkbox" id="show-runs">
+          <span>Highlight runs <small>(7+ unanswered points)</small></span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="show-players" disabled>
+          <span>Best / worst players in each run <small id="players-hint">(turn on run highlighting first)</small></span>
+        </label>
+      </section>
+
+      <section class="chart-card" aria-label="Lead tracker chart">
+        <ul class="legend" id="legend" aria-label="Legend"></ul>
+        <div id="chart" class="chart"></div>
+        <p id="chart-note" class="note" hidden></p>
+      </section>
+
+      <section id="runs" class="runs" aria-label="Runs" hidden></section>
+
+      <details class="table-view" id="table-view" hidden>
+        <summary>Scoring plays as a table</summary>
+        <div class="table-scroll"><table id="plays-table"></table></div>
+      </details>
+    </div>
+
+    <div role="tabpanel" id="panel-stats" aria-labelledby="tab-stats" tabindex="0" hidden>
+      <div id="stats"></div>
+    </div>
+
+    <footer class="foot">
+      <p><strong>Run</strong>: one team scores at least 7 points in a row while the other scores none. The run's player window starts right after the opponent's last score and ends with the run's last score, so it includes the stops, steals and misses that produced it.</p>
+      <p><strong>Game Score</strong> (Hollinger) = PTS + 0.4·FGM − 0.7·FGA − 0.4·(FTA − FTM) + 0.7·OREB + 0.3·DREB + STL + 0.7·AST + 0.7·BLK − 0.4·PF − TOV.
+         <strong>EFF</strong> = (PTS + REB + AST + STL + BLK) − (missed FG + missed FT + TOV).
+         Run windows rank only players with at least one recorded action inside the window; team rebounds and team turnovers are not credited to anyone.</p>
+      <p>Minutes played are not in the play-by-play data, so the stats tab has no minutes column.</p>
+    </footer>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

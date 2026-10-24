@@ -1,0 +1,144 @@
+{
+  "games": [
+    {
+      "slug": "gsv-vs-atl-1042600303",
+      "file": "gsv-vs-atl-1042600303.json",
+      "gameId": "1042600303",
+      "gameEt": "2026-10-21T20:00:00Z",
+      "status": "Final",
+      "label": "WNBA Finals Game 3",
+      "home": {
+        "tricode": "ATL",
+        "city": "Atlanta",
+        "name": "Dream",
+        "score": 97
+      },
+      "away": {
+        "tricode": "GSV",
+        "city": "Golden State",
+        "name": "Valkyries",
+        "score": 71
+      }
+    },
+    {
+      "slug": "gsv-vs-atl-1042600302",
+      "file": "gsv-vs-atl-1042600302.json",
+      "gameId": "1042600302",
+      "gameEt": "2026-10-19T20:00:00Z",
+      "status": "Final",
+      "label": "WNBA Finals Game 2",
+      "home": {
+        "tricode": "GSV",
+        "city": "Golden State",
+        "name": "Valkyries",
+        "score": 65
+      },
+      "away": {
+        "tricode": "ATL",
+        "city": "Atlanta",
+        "name": "Dream",
+        "score": 79
+      }
+    },
+    {
+      "slug": "gsv-vs-atl-1042600301",
+      "file": "gsv-vs-atl-1042600301.json",
+      "gameId": "1042600301",
+      "gameEt": "2026-10-17T15:30:00Z",
+      "status": "Final",
+      "label": "WNBA Finals Game 1",
+      "home": {
+        "tricode": "GSV",
+        "city": "Golden State",
+        "name": "Valkyries",
+        "score": 68
+      },
+      "away": {
+        "tricode": "ATL",
+        "city": "Atlanta",
+        "name": "Dream",
+        "score": 64
+      }
+    },
+    {
+      "slug": "gsv-vs-atl-1042600213",
+      "file": "gsv-vs-atl-1042600213.json",
+      "gameId": "1042600213",
+      "gameEt": "2026-10-09T21:30:00Z",
+      "status": "Final/OT",
+      "label": "Semifinals Game 3",
+      "home": {
+        "tricode": "LVA",
+        "city": "Las Vegas",
+        "name": "Aces",
+        "score": 77
+      },
+      "away": {
+        "tricode": "GSV",
+        "city": "Golden State",
+        "name": "Valkyries",
+        "score": 87
+      }
+    },
+    {
+      "slug": "gsv-vs-atl-1042600212",
+      "file": "gsv-vs-atl-1042600212.json",
+      "gameId": "1042600212",
+      "gameEt": "2026-10-07T21:30:00Z",
+      "status": "Final",
+      "label": "Semifinals Game 2",
+      "home": {
+        "tricode": "GSV",
+        "city": "Golden State",
+        "name": "Valkyries",
+        "score": 83
+      },
+      "away": {
+        "tricode": "LVA",
+        "city": "Las Vegas",
+        "name": "Aces",
+        "score": 81
+      }
+    },
+    {
+      "slug": "gsv-vs-atl-1042600202",
+      "file": "gsv-vs-atl-1042600202.json",
+      "gameId": "1042600202",
+      "gameEt": "2026-10-07T19:30:00Z",
+      "status": "Final/OT",
+      "label": "Semifinals Game 2",
+      "home": {
+        "tricode": "ATL",
+        "city": "Atlanta",
+        "name": "Dream",
+        "score": 101
+      },
+      "away": {
+        "tricode": "NYL",
+        "city": "New York",
+        "name": "Liberty",
+        "score": 98
+      }
+    },
+    {
+      "slug": "gsv-vs-atl-1042600211",
+      "file": "gsv-vs-atl-1042600211.json",
+      "gameId": "1042600211",
+      "gameEt": "2026-10-04T16:00:00Z",
+      "status": "Final",
+      "label": "Semifinals Game 1",
+      "home": {
+        "tricode": "GSV",
+        "city": "Golden State",
+        "name": "Valkyries",
+        "score": 71
+      },
+      "away": {
+        "tricode": "LVA",
+        "city": "Las Vegas",
+        "name": "Aces",
+        "score": 60
+      }
+    }
+  ]
+}
