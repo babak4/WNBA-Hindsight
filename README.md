@@ -296,6 +296,17 @@ The deploy also stamps the page's script and stylesheet URLs with the commit (`a
 
 If your account is on a plan that allows private Pages, change or remove the `if:` line in the workflow.
 
+### Who can run the workflows
+
+The repository is public, but only the owner can start the workflows:
+
+- Starting a workflow (pushing to `main`, or **Run workflow**) needs write access to the repository, and the owner is the only collaborator. Nobody else can push, run or re-run a workflow.
+- Both workflows also check who started them. **Add game** runs only when `github.triggering_actor` is the repository owner. **Deploy to GitHub Pages** runs for the owner and for `github-actions[bot]`, which is how **Add game** starts the deploy after committing a game (that run is recorded under the bot). Anyone else's run is skipped. A collaborator added in future would be refused too.
+- Nothing in the repository triggers on pull requests, issues, comments or a schedule, so outside contributors cannot start a run that way. As a backstop, the repository setting for workflows from fork pull requests is set to require approval for **all** outside contributors, and the default `GITHUB_TOKEN` is read-only (each workflow asks for the extra permissions it needs).
+- The `github-pages` deployment environment only accepts deployments from `main`.
+
+If you ever add a collaborator or a new workflow trigger, revisit this.
+
 ### Adding a game from GitHub
 
 The **Add game** workflow (`.github/workflows/add-game.yml`) fetches a game on GitHub's servers and commits it to `data/`, so you don't need your laptop. Give it the game slug, which is the part of the URL after `/game/`:

@@ -20,7 +20,12 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event.repository.private == false
+    # Public repos only (Pages needs it on a free plan), and only the owner can start a deploy. The bot is
+    # allowed because add-game starts a deploy itself after committing (that run is recorded as the bot),
+    # and add-game is owner-only.
+    if: >-
+      github.event.repository.private == false &&
+      (github.triggering_actor == github.repository_owner || github.triggering_actor == 'github-actions[bot]')
     runs-on: ubuntu-latest
     environment:
       name: github-pages

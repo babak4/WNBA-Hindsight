@@ -1,5 +1,6 @@
 # Fetches one game's play-by-play from wnba.com and commits it to data/.
 # A game that is already in data/ is skipped unless `force` is set.
+# Only the repository owner can run it (see the `if:` on the job).
 #
 # Run it from the Actions tab ("Run workflow") or: gh workflow run add-game.yml -f slug=gsv-vs-atl-1042600303
 # The slug is the game part of the URL: https://www.wnba.com/game/<slug>/play-by-play
@@ -31,6 +32,9 @@ concurrency:
 
 jobs:
   add-game:
+    # Owner only. Starting a workflow needs write access anyway; this also refuses a collaborator added
+    # later, and a re-run by anyone else (triggering_actor is whoever pressed the button).
+    if: github.triggering_actor == github.repository_owner
     runs-on: ubuntu-latest
     env:
       SLUG: ${{ inputs.slug }}
