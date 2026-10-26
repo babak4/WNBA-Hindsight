@@ -385,3 +385,51 @@ export function timeouts(g) {
       description: e.description,
     }));
 }
+
+/**
+ * Substitutions in game order. Each entry is about the player LEAVING the court, with her stats for the
+ * stint that just ended. The player coming on is named only in the play description, so she is matched by
+ * surname.
+ *
+ * A stint is everything she did since she last came on (or tip-off, if she started) up to this substitution.
+ * The feed does not record lineup changes at period breaks, so a player can leave twice with no recorded
+ * return in between; her stint then starts right after her previous exit, because she cannot act while off
+ * court. In that case `since` is "unrecorded" and the time on court is unknown (null).
+ */
+export function substitutions(g) {
+  // personId -> {from: first event index of her current stint, since: the sub that brought her on,
+  //              "tipoff" (a starter), or "unrecorded" (back on court without a recorded substitution)}
+  const stintOf = new Map();
+  const state = (pid) => stintOf.get(pid) ?? { from: 0, since: "tipoff" };
+  const out = [];
+  for (const e of g.events) {
+    if (e.actionType !== "Substitution" || e.kind !== "player") continue;
+    const outId = e.personId;
+    const inId = e.appeared[1] ?? null;
+    const { from, since } = state(outId);
+    const stint = windowStats(g, from, e.index, { includeAppeared: true }).find((p) => p.personId === outId);
+    const inSurname = /^SUB: (.+?) FOR /.exec(e.description)?.[1]?.trim() ?? "";
+    const startEvent = since && typeof since === "object" ? since : null;
+    out.push({
+      index: e.index,
+      side: e.side,
+      period: e.period,
+      clock: e.clock,
+      elapsed: e.elapsed,
+      outId,
+      outName: g.players.get(outId)?.name ?? String(outId),
+      outTricode: g.teams[e.side].teamTricode,
+      inId,
+      inName: inId ? g.players.get(inId)?.name ?? inSurname : inSurname,
+      // how the stint began: "tipoff", "unrecorded", or the time she came on
+      since: startEvent ? { period: startEvent.period, clock: startEvent.clock, elapsed: startEvent.elapsed } : since,
+      onCourtSeconds: since === "unrecorded" ? null : e.elapsed - (startEvent ? startEvent.elapsed : 0),
+      stats: stint.stats,
+      gameScore: stint.gameScore,
+      eff: stint.eff,
+    });
+    stintOf.set(outId, { from: e.index + 1, since: "unrecorded" }); // off court now; next stint starts after this
+    if (inId) stintOf.set(inId, { from: e.index + 1, since: e });
+  }
+  return out;
+}

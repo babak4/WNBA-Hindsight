@@ -1,4 +1,4 @@
-import { buildGame, findRuns, timeouts, RUN_MIN_POINTS, RUN_MIN_ALLOWED, RUN_MAX_ALLOWED, runReport, leadSeries, periodName, periodRanges, selectionSummary } from "./model.js";
+import { buildGame, findRuns, timeouts, substitutions, RUN_MIN_POINTS, RUN_MIN_ALLOWED, RUN_MAX_ALLOWED, runReport, leadSeries, periodName, periodRanges, selectionSummary } from "./model.js";
 import { createChart, timeAt } from "./chart.js";
 import { renderStats } from "./statsView.js";
 import { initTheme } from "./theme.js";
@@ -6,7 +6,7 @@ import { applyInsert, commitRunSize, isAllowedText, liveRunSize } from "./runInp
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  select: $("game-select"), runs: $("show-runs"), timeouts: $("show-timeouts"),
+  select: $("game-select"), runs: $("show-runs"), timeouts: $("show-timeouts"), subs: $("show-subs"),
   runSize: $("run-size"), runMinus: $("run-minus"), runPlus: $("run-plus"), runHint: $("run-size-hint"), players: $("show-players"), hint: $("players-hint"),
   summary: $("game-summary"), message: $("message"), legend: $("legend"), chart: $("chart"),
   note: $("chart-note"), runList: $("runs"), tableView: $("table-view"), table: $("plays-table"),
@@ -109,6 +109,8 @@ function renderAll(entry) {
     timeouts: timeouts(game),
     runMin: runSize,
     showTimeouts: els.timeouts.checked,
+    subs: substitutions(game),
+    showSubs: els.subs.checked,
     onRunHover: (n) => setActiveRun(n),
     onSelect: (sel) => setSelection(sel, false),
   });
@@ -137,11 +139,16 @@ function syncControls() {
     const n = timeouts(game).length;
     notes.push(`<span class="tri home">▼</span> ${esc(home.teamTricode)} and <span class="tri away">▲</span> ${esc(away.teamTricode)} pointers mark the ${n} team timeout${n === 1 ? "" : "s"} at the lead when each was called (coach challenges included; official media timeouts and administrative timeout resets are not shown).`);
   }
+  if (els.subs.checked) {
+    const n = substitutions(game).length;
+    notes.push(`Dots mark the ${n} substitutions: ${esc(home.teamTricode)} above the chart, ${esc(away.teamTricode)} below. Hover a dot to see who left, who came on, and the leaving player's Game Score and EFF for the stretch since they last came on (or tip-off, for a starter).`);
+  }
   els.note.hidden = !notes.length;
   els.note.innerHTML = notes.join(" ");
   els.runList.hidden = !(on && els.players.checked && runs.length);
   chart?.setShowRuns(on);
   chart?.setShowTimeouts(els.timeouts.checked);
+  chart?.setShowSubs(els.subs.checked);
 }
 
 function setActiveRun(n) {
@@ -304,6 +311,7 @@ els.runs.addEventListener("change", () => {
 });
 els.players.addEventListener("change", syncControls);
 els.timeouts.addEventListener("change", syncControls);
+els.subs.addEventListener("change", syncControls);
 
 // ---- Run size box -------------------------------------------------------------------------------
 // Guards (rules live in runInput.js): only the digits 0-9 can be entered, never a number above 40, never a

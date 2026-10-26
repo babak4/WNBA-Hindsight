@@ -1,6 +1,8 @@
 // SVG lead tracker. Draws from model output only; no game logic here.
 import { leadSeries, totalSeconds, periodLength, periodName, formatClock } from "./model.js";
 
+const ROW = 12; // vertical step between stacked substitution markers
+
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const minus = (n) => (n < 0 ? "−" : "") + Math.abs(n);
 const signed = (n) => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n);
@@ -21,7 +23,8 @@ let uid = 0;
  * @param {object} g game from buildGame
  * @param {{runs: object[], showRuns: boolean, onRunHover: (n:number|null)=>void,
  *          onSelect: (sel: {from:number,to:number}|null) => void,
- *          timeouts: object[], showTimeouts: boolean, runMin?: number}} opts
+ *          timeouts: object[], showTimeouts: boolean, runMin?: number,
+ *          subs: object[], showSubs: boolean}} opts
  */
 export function createChart(el, g, opts) {
   const series = leadSeries(g);
@@ -29,7 +32,7 @@ export function createChart(el, g, opts) {
   const home = g.teams.home.teamTricode, away = g.teams.away.teamTricode;
   const id = `lt${++uid}`;
   let active = null;
-  let state = { showRuns: opts.showRuns, showTimeouts: !!opts.showTimeouts, selection: null, runMin: opts.runMin ?? 7 };
+  let state = { showRuns: opts.showRuns, showTimeouts: !!opts.showTimeouts, showSubs: !!opts.showSubs, selection: null, runMin: opts.runMin ?? 7 };
 
   // Zero stays on the chart, but each side only gets as much room as the biggest lead it needs.
   const maxHome = Math.max(0, ...series.map((p) => p.lead));
@@ -43,8 +46,27 @@ export function createChart(el, g, opts) {
 
   function draw() {
     const W = Math.max(320, Math.floor(el.clientWidth));
-    const H = Math.round(Math.min(460, Math.max(300, W * 0.45)));
-    const m = { t: 20, r: 14, b: 30, l: 40 };
+    const baseH = Math.round(Math.min(460, Math.max(300, W * 0.45)));
+
+    // Substitution markers live in two lanes outside the plot (home above, away below). Markers that would
+    // touch are stacked in extra rows, so the lanes grow to fit and the plot keeps its height.
+    const subRow = [];
+    const rowsUsed = { home: 0, away: 0 };
+    if (state.showSubs) {
+      const lastX = { home: [], away: [] };
+      (opts.subs ?? []).forEach((sb, i) => {
+        const px = 40 + (sb.elapsed / total) * (W - 40 - 14);
+        const rows = lastX[sb.side];
+        let r = rows.findIndex((lx) => px - lx >= ROW);
+        if (r < 0) { r = rows.length; rows.push(px); } else rows[r] = px;
+        subRow[i] = r;
+      });
+      rowsUsed.home = lastX.home.length;
+      rowsUsed.away = lastX.away.length;
+    }
+    const laneH = (rows) => (rows ? rows * ROW + 8 : 0);
+    const H = baseH + laneH(rowsUsed.home) + laneH(rowsUsed.away);
+    const m = { t: 20 + laneH(rowsUsed.home), r: 14, b: 30 + laneH(rowsUsed.away), l: 40 };
     const pw = W - m.l - m.r, ph = H - m.t - m.b;
     const x = (s) => m.l + (s / total) * pw;
     const y = (v) => m.t + ((top - v) / (top + bottom)) * ph;
@@ -121,6 +143,21 @@ export function createChart(el, g, opts) {
       }
     }
 
+    // Substitution markers: one dot per substitution, colored by team, in the lane above (home) or below (away) the plot.
+    if (state.showSubs && (opts.subs ?? []).length) {
+      const laneY = { home: 20, away: m.t + ph + 2 };
+      for (const side of ["home", "away"]) {
+        if (!rowsUsed[side]) continue;
+        s += `<text class="ax-text lane-label" x="${m.l + 4}" y="${laneY[side] + 6}" dominant-baseline="central">${esc(side === "home" ? home : away)} subs</text>`;
+      }
+      opts.subs.forEach((sb, i) => {
+        const cx = x(sb.elapsed), cy = laneY[sb.side] + 6 + subRow[i] * ROW;
+        const color = sb.side === "home" ? "var(--home)" : "var(--away)";
+        s += `<g data-sub="${i}"><circle class="sub-hit" cx="${cx}" cy="${cy}" r="7" fill="transparent"/>` +
+             `<circle class="sub-mark" cx="${cx}" cy="${cy}" r="4.6" fill="${color}" stroke="var(--surface-1)" stroke-width="1.8"/></g>`;
+      });
+    }
+
     // Timeout pointers, at the lead when the timeout was called: the home team's point down at the
     // line from above, the away team's point up at it from below. Colored by team.
     if (state.showTimeouts) {
@@ -146,7 +183,8 @@ export function createChart(el, g, opts) {
 
     const label = `Lead tracker: ${g.teams.home.teamName} ${g.teams.home.score}, ${g.teams.away.teamName} ${g.teams.away.score}. ` +
       `Largest lead ${maxAbs}. ${state.showRuns ? `${opts.runs.length} runs of ${state.runMin} or more unanswered points highlighted. ` : ""}` +
-      `${state.showTimeouts ? `${(opts.timeouts ?? []).length} team timeouts marked.` : ""}`;
+      `${state.showTimeouts ? `${(opts.timeouts ?? []).length} team timeouts marked. ` : ""}` +
+      `${state.showSubs ? `${(opts.subs ?? []).length} substitutions marked.` : ""}`;
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(label)}">${s}</svg><div class="tooltip" hidden></div>`;
     bind();
     applyActive();
@@ -224,7 +262,7 @@ export function createChart(el, g, opts) {
     };
 
     svg.addEventListener("pointerdown", (ev) => {
-      if (ev.button > 0 || ev.target.closest("[data-run], [data-timeout]")) return;
+      if (ev.button > 0 || ev.target.closest("[data-run], [data-timeout], [data-sub]")) return;
       const { px, py } = toPx(ev);
       if (px < m.l || px > m.l + pw || py < m.t || py > m.t + ph) return;
       ev.preventDefault();
@@ -272,6 +310,19 @@ export function createChart(el, g, opts) {
         paintSel({ from: snap(Math.min(drag.t0, t)), to: snap(Math.max(drag.t0, t)) });
         return;
       }
+      const subEl = ev.target.closest("[data-sub]");
+      if (subEl) {
+        const sb = opts.subs[Number(subEl.dataset.sub)];
+        if (active !== null) opts.onRunHover(null);
+        // a guide line across the plot shows when it happened
+        hover.setAttribute("visibility", "visible");
+        const hx = x(sb.elapsed);
+        hover.querySelector("line").setAttribute("x1", hx); hover.querySelector("line").setAttribute("x2", hx);
+        hover.querySelector("circle").setAttribute("visibility", "hidden");
+        showTip(subTipHtml(sb), ev.clientX - el.getBoundingClientRect().left, ev.clientY - el.getBoundingClientRect().top);
+        return;
+      }
+      hover.querySelector("circle").setAttribute("visibility", "visible");
       const toEl = ev.target.closest("[data-timeout]");
       if (toEl) {
         const t = opts.timeouts[Number(toEl.dataset.timeout)];
@@ -316,6 +367,35 @@ export function createChart(el, g, opts) {
     svg.addEventListener("pointerleave", () => { hide(); if (state.showRuns) opts.onRunHover(null); });
   }
 
+  const fmt1 = (v) => (v < 0 ? "−" : "") + Math.abs(v).toFixed(1);
+  const mmss = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, "0")}`;
+
+  /** Tooltip for a substitution: who left, who came on, and how the player leaving did during that stint. */
+  function subTipHtml(sb) {
+    const st = sb.stats;
+    const reb = st.oreb + st.dreb;
+    const bits = [];
+    if (st.pts) bits.push(`${st.pts} PTS`);
+    if (reb) bits.push(`${reb} REB`);
+    if (st.ast) bits.push(`${st.ast} AST`);
+    if (st.stl) bits.push(`${st.stl} STL`);
+    if (st.blk) bits.push(`${st.blk} BLK`);
+    if (st.tov) bits.push(`${st.tov} TO`);
+    if (st.pf) bits.push(`${st.pf} PF`);
+    if (st.fga) bits.push(`FG ${st.fgm}/${st.fga}`);
+    const line = bits.length ? bits.join(" · ") : "no recorded stats";
+    const since = sb.since === "tipoff" ? "since tip-off"
+      : sb.since === "unrecorded" ? "since coming back on (that substitution is not in the feed)"
+      : `since coming on at ${timeAt(sb.since.elapsed, g)}`;
+    const time = sb.onCourtSeconds === null ? "" : `On court ${mmss(sb.onCourtSeconds)} ${since}`;
+    return `<div class="t-time">Substitution · ${timeAt(sb.elapsed, g)}</div>` +
+      `<div class="t-score"><span class="tt-dot bg-${sb.side}"></span>Out: ${esc(sb.outName)} <span class="t-tag">${esc(sb.outTricode)}</span></div>` +
+      `<div class="t-play">In: ${esc(sb.inName || "unknown")}</div>` +
+      `<div class="t-rate">Game Score <b>${fmt1(sb.gameScore)}</b> · EFF <b>${minus(sb.eff)}</b></div>` +
+      `<div class="t-play">${esc(time || since)}</div>` +
+      `<div class="t-play">${esc(line)}</div>`;
+  }
+
   function setActive(n) {
     if (active === n) return;
     active = n;
@@ -330,6 +410,7 @@ export function createChart(el, g, opts) {
     setShowRuns(v) { state = { ...state, showRuns: v }; draw(); },
     /** Replace the runs (after the run size changed) and redraw. */
     setRuns(runs, runMin) { opts.runs = runs; state = { ...state, runMin }; active = null; draw(); },
+    setShowSubs(v) { state = { ...state, showSubs: v }; draw(); },
     setShowTimeouts(v) { state = { ...state, showTimeouts: v }; draw(); },
     /** Set or clear the selected period from outside (e.g. the quarter buttons). */
     setSelection(sel) { state = { ...state, selection: sel }; paintSel(sel); },

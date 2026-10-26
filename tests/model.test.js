@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { timeouts, eventRange, periodRanges, selectionSummary, windowReport, playerGameStats, buildGame, findRuns, runReport, teamTotals, leadSeries, gameScore, efficiency, parseClock, elapsedSeconds, formatClock } from "../web/model.js";
+import { windowStats, substitutions, timeouts, eventRange, periodRanges, selectionSummary, windowReport, playerGameStats, buildGame, findRuns, runReport, teamTotals, leadSeries, gameScore, efficiency, parseClock, elapsedSeconds, formatClock } from "../web/model.js";
 
 const dataDir = new URL("../data/", import.meta.url);
 const files = readdirSync(dataDir).filter((f) => f.endsWith(".json") && f !== "index.json");
@@ -116,6 +116,35 @@ for (const f of files) {
     // a run of 10+ is also a run of 7+
     const seven = new Set(findRuns(g, 7).map((r) => r.firstIndex));
     for (const r of findRuns(g, 10)) assert.ok(seven.has(r.firstIndex));
+  });
+
+  test(`${f}: substitution stints are consistent`, () => {
+    const subs = substitutions(g);
+    const rows = g.events.filter((e) => e.actionType === "Substitution" && e.kind === "player");
+    assert.equal(subs.length, rows.length, "one entry per substitution row");
+    for (const sub of subs) {
+      assert.ok(sub.outId !== sub.inId);
+      assert.ok(sub.onCourtSeconds >= 0);
+      assert.equal(g.players.get(sub.outId).side, sub.side);
+      if (sub.inId) assert.equal(g.players.get(sub.inId).side, sub.side, "player coming on is on the same team");
+    }
+    // Stints never overlap or double-count: a player's recorded stints add up to no more than her whole game.
+    // (They can add up to less: the feed omits lineup changes at period breaks, so some activity belongs to a
+    // stint that did not end with a recorded substitution.)
+    const whole = new Map(playerGameStats(g, "home").concat(playerGameStats(g, "away")).map((p) => [p.personId, p.stats]));
+    const sums = new Map();
+    for (const sub of subs) {
+      const t = sums.get(sub.outId) ?? {};
+      for (const [k, v] of Object.entries(sub.stats)) t[k] = (t[k] ?? 0) + v;
+      sums.set(sub.outId, t);
+    }
+    for (const [pid, t] of sums) {
+      for (const [k, v] of Object.entries(t)) assert.ok(v <= whole.get(pid)[k], `${g.players.get(pid).name} ${k}: ${v} > ${whole.get(pid)[k]}`);
+    }
+    for (const sub of subs) {
+      if (sub.since === "unrecorded") assert.equal(sub.onCourtSeconds, null);
+      else assert.ok(sub.onCourtSeconds >= 0);
+    }
   });
 
   test(`${f}: lead series is consistent`, () => {

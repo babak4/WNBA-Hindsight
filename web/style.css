@@ -207,6 +207,11 @@ select {
 .tri.home { color: var(--home); }
 .tri.away { color: var(--away); }
 .to-hit { cursor: pointer; }
+.sub-hit { cursor: pointer; }
+.lane-label { font-size: 10px; letter-spacing: 0.04em; }
+.t-tag { color: var(--text-secondary); font-size: 0.72rem; }
+.tooltip .t-rate { margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tooltip .t-rate b { color: var(--accent); }
 .tt-dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
 
 /* SVG parts */
@@ -228,7 +233,7 @@ g[data-run].active .main { stroke-width: 4.5; }
 g[data-run].active .run-badge { stroke-width: 3; }
 
 .tooltip {
-  position: absolute; z-index: 2; pointer-events: none; min-width: 170px; max-width: 260px;
+  position: absolute; z-index: 2; pointer-events: none; min-width: 190px; max-width: 300px;
   background: var(--surface-1); color: var(--text-primary);
   border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); font-size: 0.82rem;
@@ -351,3 +356,5 @@ th { color: var(--text-secondary); font-weight: 700; position: sticky; top: 0; b
 .stepper input[aria-invalid="true"] { color: var(--danger); box-shadow: inset 0 -3px 0 var(--danger); }
 .run-hint { color: var(--text-muted); font-size: 0.82rem; }
 .stepper input[aria-invalid="true"] ~ * , .run-setting:has(input[aria-invalid="true"]) .run-hint { color: var(--danger); }
+
+#panel-lead > .controls { align-items: flex-start; }
