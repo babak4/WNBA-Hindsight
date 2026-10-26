@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { eventRange, periodRanges, selectionSummary, windowReport, playerGameStats, buildGame, findRuns, runReport, teamTotals, leadSeries, gameScore, efficiency, parseClock, elapsedSeconds, formatClock } from "../web/model.js";
+import { timeouts, eventRange, periodRanges, selectionSummary, windowReport, playerGameStats, buildGame, findRuns, runReport, teamTotals, leadSeries, gameScore, efficiency, parseClock, elapsedSeconds, formatClock } from "../web/model.js";
 
 const dataDir = new URL("../data/", import.meta.url);
 const files = readdirSync(dataDir).filter((f) => f.endsWith(".json") && f !== "index.json");
@@ -90,6 +90,18 @@ for (const f of files) {
     assert.deepEqual(whole.scoreAfter, { home: g.teams.home.score, away: g.teams.away.score });
     assert.deepEqual(whole.scoreBefore, { home: 0, away: 0 });
     assert.equal(eventRange(g, 5000, 6000), null);
+  });
+
+  test(`${f}: team timeouts exclude official and reset rows`, () => {
+    const list = timeouts(g);
+    const expected = g.events.filter((e) => e.actionType === "Timeout" && e.kind === "team" && e.subType !== "Reset").length;
+    assert.equal(list.length, expected);
+    for (const t of list) {
+      assert.ok(t.side === "home" || t.side === "away");
+      assert.ok(!/Reset|Official/.test(t.description), t.description);
+      assert.equal(t.lead, t.scoreHome - t.scoreAway);
+    }
+    for (let i = 1; i < list.length; i++) assert.ok(list[i].elapsed >= list[i - 1].elapsed);
   });
 
   test(`${f}: lead series is consistent`, () => {

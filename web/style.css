@@ -202,6 +202,10 @@ select {
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; cursor: crosshair; user-select: none; -webkit-user-select: none; }
 .chart svg.dragging { cursor: ew-resize; }
 .note { margin: 6px 4px 0; color: var(--text-muted); font-size: 0.8rem; }
+.tri.home { color: var(--home); }
+.tri.away { color: var(--away); }
+.to-hit { cursor: pointer; }
+.tt-dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
 
 /* SVG parts */
 .ax-text { fill: var(--text-muted); font-size: 11px; }

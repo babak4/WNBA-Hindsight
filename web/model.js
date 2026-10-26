@@ -156,6 +156,7 @@ export function buildGame(raw) {
       side,
       personId: a.personId,
       actionType: a.actionType,
+      subType: a.subType,
       description: a.description,
       scored,
       deltas,
@@ -354,4 +355,26 @@ export function playerGameStats(g, side) {
   return windowStats(g, 0, g.events.length - 1, { includeAppeared: true })
     .filter((p) => p.side === side)
     .sort((a, b) => b.gameScore - a.gameScore || b.eff - a.eff || a.name.localeCompare(b.name));
+}
+
+/**
+ * Timeouts called by a team, in game order. Official (media) timeouts belong to no team and "Reset"
+ * rows are administrative (they repeat the previous timeout's count), so neither is included.
+ * A coach's challenge is listed because the feed records it as a team timeout.
+ */
+export function timeouts(g) {
+  return g.events
+    .filter((e) => e.actionType === "Timeout" && e.kind === "team" && e.subType !== "Reset")
+    .map((e) => ({
+      index: e.index,
+      side: e.side,
+      period: e.period,
+      clock: e.clock,
+      elapsed: e.elapsed,
+      scoreHome: e.scoreHome,
+      scoreAway: e.scoreAway,
+      lead: e.scoreHome - e.scoreAway,
+      challenge: e.subType === "Coach Challenge",
+      description: e.description,
+    }));
 }

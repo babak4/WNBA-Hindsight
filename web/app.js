@@ -1,11 +1,11 @@
-import { buildGame, findRuns, runReport, leadSeries, periodName, periodRanges, selectionSummary } from "./model.js";
+import { buildGame, findRuns, timeouts, runReport, leadSeries, periodName, periodRanges, selectionSummary } from "./model.js";
 import { createChart, timeAt } from "./chart.js";
 import { renderStats } from "./statsView.js";
 import { initTheme } from "./theme.js";
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  select: $("game-select"), runs: $("show-runs"), players: $("show-players"), hint: $("players-hint"),
+  select: $("game-select"), runs: $("show-runs"), timeouts: $("show-timeouts"), players: $("show-players"), hint: $("players-hint"),
   summary: $("game-summary"), message: $("message"), legend: $("legend"), chart: $("chart"),
   note: $("chart-note"), runList: $("runs"), tableView: $("table-view"), table: $("plays-table"),
   stats: $("stats"), theme: $("theme-toggle"),
@@ -103,6 +103,8 @@ function renderAll(entry) {
   chart = createChart(els.chart, game, {
     runs,
     showRuns: els.runs.checked,
+    timeouts: timeouts(game),
+    showTimeouts: els.timeouts.checked,
     onRunHover: (n) => setActiveRun(n),
     onSelect: (sel) => setSelection(sel, false),
   });
@@ -120,14 +122,22 @@ function syncControls() {
   const on = els.runs.checked;
   els.players.disabled = !on;
   els.hint.hidden = on;
-  els.note.hidden = !on;
-  els.note.textContent = on
-    ? (runs.length
-        ? `Arrows mark ${runs.length} run${runs.length === 1 ? "" : "s"} of 7+ unanswered points, from the lead before the run's first score to the lead after its last.`
-        : "No team scored 7+ unanswered points in this game.")
-    : "";
+  const { home, away } = game.teams;
+  const notes = [];
+  if (on) {
+    notes.push(runs.length
+      ? `Arrows mark ${runs.length} run${runs.length === 1 ? "" : "s"} of 7+ unanswered points, from the lead before the run's first score to the lead after its last.`
+      : "No team scored 7+ unanswered points in this game.");
+  }
+  if (els.timeouts.checked) {
+    const n = timeouts(game).length;
+    notes.push(`<span class="tri home">▼</span> ${esc(home.teamTricode)} and <span class="tri away">▲</span> ${esc(away.teamTricode)} pointers mark the ${n} team timeout${n === 1 ? "" : "s"} at the lead when each was called (coach challenges included; official media timeouts and administrative timeout resets are not shown).`);
+  }
+  els.note.hidden = !notes.length;
+  els.note.innerHTML = notes.join(" ");
   els.runList.hidden = !(on && els.players.checked && runs.length);
   chart?.setShowRuns(on);
+  chart?.setShowTimeouts(els.timeouts.checked);
 }
 
 function setActiveRun(n) {
@@ -289,6 +299,7 @@ els.runs.addEventListener("change", () => {
   syncControls();
 });
 els.players.addEventListener("change", syncControls);
+els.timeouts.addEventListener("change", syncControls);
 
 initTheme(els.theme);
 init();

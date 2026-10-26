@@ -20,7 +20,8 @@ let uid = 0;
  * @param {HTMLElement} el container
  * @param {object} g game from buildGame
  * @param {{runs: object[], showRuns: boolean, onRunHover: (n:number|null)=>void,
- *          onSelect: (sel: {from:number,to:number}|null) => void}} opts
+ *          onSelect: (sel: {from:number,to:number}|null) => void,
+ *          timeouts: object[], showTimeouts: boolean}} opts
  */
 export function createChart(el, g, opts) {
   const series = leadSeries(g);
@@ -28,7 +29,7 @@ export function createChart(el, g, opts) {
   const home = g.teams.home.teamTricode, away = g.teams.away.teamTricode;
   const id = `lt${++uid}`;
   let active = null;
-  let state = { showRuns: opts.showRuns, selection: null };
+  let state = { showRuns: opts.showRuns, showTimeouts: !!opts.showTimeouts, selection: null };
 
   // Zero stays on the chart, but each side only gets as much room as the biggest lead it needs.
   const maxHome = Math.max(0, ...series.map((p) => p.lead));
@@ -120,6 +121,22 @@ export function createChart(el, g, opts) {
       }
     }
 
+    // Timeout pointers, at the lead when the timeout was called: the home team's point down at the
+    // line from above, the away team's point up at it from below. Colored by team.
+    if (state.showTimeouts) {
+      (opts.timeouts ?? []).forEach((t, i) => {
+        const cx = x(t.elapsed), cy = y(t.lead);
+        const up = t.side === "home";          // home pointers sit above the line, pointing down
+        const tip = up ? cy - 3 : cy + 3, base = up ? cy - 15 : cy + 15;
+        const pts = `${cx},${tip} ${cx - 7},${base} ${cx + 7},${base}`;
+        const color = t.side === "home" ? "var(--home)" : "var(--away)";
+        s += `<g data-timeout="${i}">`;
+        s += `<circle class="to-hit" cx="${cx}" cy="${(tip + base) / 2}" r="12" fill="transparent"/>`;
+        s += `<polygon class="to-mark" points="${pts}" fill="${color}" stroke="var(--surface-1)" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"/>`;
+        s += `</g>`;
+      });
+    }
+
     s = mainSvg.replace("<!--wins-->", wins) + s;
     s += `<g class="sel" pointer-events="none" visibility="hidden">
       <rect class="sel-rect" y="${m.t}" height="${ph}"/>
@@ -128,7 +145,8 @@ export function createChart(el, g, opts) {
     s += `<g class="hover" visibility="hidden"><line class="cross" y1="${m.t}" y2="${m.t + ph}"/><circle class="cross-dot" r="4.5"/></g>`;
 
     const label = `Lead tracker: ${g.teams.home.teamName} ${g.teams.home.score}, ${g.teams.away.teamName} ${g.teams.away.score}. ` +
-      `Largest lead ${maxAbs}. ${state.showRuns ? `${opts.runs.length} runs of 7 or more unanswered points highlighted.` : ""}`;
+      `Largest lead ${maxAbs}. ${state.showRuns ? `${opts.runs.length} runs of 7 or more unanswered points highlighted. ` : ""}` +
+      `${state.showTimeouts ? `${(opts.timeouts ?? []).length} team timeouts marked.` : ""}`;
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(label)}">${s}</svg><div class="tooltip" hidden></div>`;
     bind();
     applyActive();
@@ -206,7 +224,7 @@ export function createChart(el, g, opts) {
     };
 
     svg.addEventListener("pointerdown", (ev) => {
-      if (ev.button > 0 || ev.target.closest("[data-run]")) return;
+      if (ev.button > 0 || ev.target.closest("[data-run], [data-timeout]")) return;
       const { px, py } = toPx(ev);
       if (px < m.l || px > m.l + pw || py < m.t || py > m.t + ph) return;
       ev.preventDefault();
@@ -254,6 +272,20 @@ export function createChart(el, g, opts) {
         paintSel({ from: snap(Math.min(drag.t0, t)), to: snap(Math.max(drag.t0, t)) });
         return;
       }
+      const toEl = ev.target.closest("[data-timeout]");
+      if (toEl) {
+        const t = opts.timeouts[Number(toEl.dataset.timeout)];
+        const who = t.side === "home" ? home : away;
+        hover.setAttribute("visibility", "hidden");
+        if (active !== null) opts.onRunHover(null);
+        const lead = t.lead === 0 ? "Tied" : `${t.lead > 0 ? home : away} +${Math.abs(t.lead)}`;
+        showTip(
+          `<div class="t-time">${t.challenge ? "Coach challenge" : "Timeout"} · ${timeAt(t.elapsed, g)}</div>` +
+          `<div class="t-score"><span class="tt-dot bg-${t.side}"></span>${esc(who)} ${t.challenge ? "challenge" : "timeout"}</div>` +
+          `<div class="t-play">${esc(home)} ${t.scoreHome}–${t.scoreAway} ${esc(away)} · ${lead}</div>`,
+          ev.clientX - el.getBoundingClientRect().left, ev.clientY - el.getBoundingClientRect().top);
+        return;
+      }
       const runEl = ev.target.closest("[data-run]");
       if (runEl) {
         const r = opts.runs.find((q) => q.number === Number(runEl.dataset.run));
@@ -296,6 +328,7 @@ export function createChart(el, g, opts) {
 
   return {
     setShowRuns(v) { state = { ...state, showRuns: v }; draw(); },
+    setShowTimeouts(v) { state = { ...state, showTimeouts: v }; draw(); },
     /** Set or clear the selected period from outside (e.g. the quarter buttons). */
     setSelection(sel) { state = { ...state, selection: sel }; paintSel(sel); },
     setActive,
