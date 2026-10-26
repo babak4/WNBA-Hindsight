@@ -33,6 +33,14 @@ jobs:
           cp -r web data _site/
           cp index.html _site/
           touch _site/.nojekyll
+          # Pages lets browsers reuse files for 10 minutes, so a reload right after a deploy could pair
+          # the new page with the previous deploy's scripts. Stamp every script/stylesheet URL with this
+          # commit so each deploy's files only ever load together.
+          V="${GITHUB_SHA::10}"
+          cd _site/web
+          sed -E -i.bak "s#(from \"\./[A-Za-z]+\.js)\"#\1?v=${V}\"#" ./*.js
+          sed -E -i.bak "s#(src=\"app\.js)\"#\1?v=${V}\"#; s#(href=\"style\.css)\"#\1?v=${V}\"#" index.html
+          rm -f ./*.bak
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

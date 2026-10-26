@@ -291,6 +291,8 @@ One-time setup:
 2. Go to **Settings → Pages** and set **Source** to **GitHub Actions**.
 3. Push to `main` (or run the workflow from the **Actions** tab). Later pushes redeploy automatically, so adding a game is: `uv run fetch_pbp.py <url>`, commit `data/`, push.
 
+The deploy also stamps the page's script and stylesheet URLs with the commit (`app.js?v=<sha>` and so on). GitHub Pages lets browsers reuse files for 10 minutes, and without the stamp a reload soon after a deploy could pair the new page with the previous deploy's scripts, which makes new controls look dead. The stamp is added to the copy that gets deployed, not to the files in the repo, so local development is unchanged.
+
 If your account is on a plan that allows private Pages, change or remove the `if:` line in the workflow.
 
 ### Adding a game from GitHub
