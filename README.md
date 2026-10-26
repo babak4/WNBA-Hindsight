@@ -1,8 +1,10 @@
-# play-by-play-wnba
+# WNBA Hindsight
 
-Tools for extracting play-by-play data from WNBA games on [wnba.com](https://www.wnba.com).
+Lead trackers, scoring runs and player ratings for WNBA games, built from the play-by-play data on [wnba.com](https://www.wnba.com). Live site: https://babak4.github.io/WNBA-Hindsight/
 
-The goal is to turn each game into immutable records containing the scoreboard time, the score after the action, whether it was a team or player action, and for player actions the player name and action. At the moment the project covers the first step: capturing the raw play-by-play JSON for a game, exactly as the site publishes it.
+The project has a Python tool that extracts the raw play-by-play data from wnba.com, and a static web app (the viewer) that draws the results.
+
+The goal is to turn each game into immutable records containing the scoreboard time, the score after the action, whether it was a team or player action, and for player actions the player name and action. The extraction tool covers the first step: capturing the raw play-by-play JSON for a game, as the site publishes it.
 
 ## Requirements
 
@@ -231,7 +233,7 @@ Scores are strings (`"23"`), while `pointsTotal` is a number.
 
 ## Web interface
 
-A static page (plain HTML and ES modules, no build step, no dependencies) with two tabs for any stored game. It opens on **Lead tracker**; the other tab is **Player stats**.
+A static page (plain HTML and ES modules, no build step, no dependencies) with two tabs for any stored game. It opens on **Lead tracker**; the other tab is **Player stats**. A branded header bar carries the app name, and a **Dark theme** checkbox on its right switches between the light and dark themes.
 
 ```bash
 uv run python -m http.server 8000
@@ -241,6 +243,11 @@ uv run python -m http.server 8000
 It has to be served over HTTP because it loads the JSON with `fetch`; opening `web/index.html` directly from disk will not work.
 
 - **Game drop-down**: lists every game in `data/`, highest game number first (the digits at the end of the slug), and the page opens on that first game. The list comes from `data/index.json`, which `fetch_pbp.py` rebuilds after every download. If you add or delete files in `data/` by hand, run `uv run index_games.py`. Choosing a game puts it in the URL (`#slug`), so that choice can be bookmarked and survives a reload; a visit without a `#slug` always opens the highest-numbered game.
+### Header, themes and scoreboard
+
+- **Theme**: the **Dark theme** checkbox in the header switches themes straight away. The choice is remembered in the browser (`localStorage`); until you make one, the page follows your operating system's light/dark setting.
+- **Scoreboard**: under the game drop-down, a card shows the final score with each team's color bar (blue for the home team, orange for the away team, the same colors as the chart), the competition label, the date and the game status.
+
 ### Lead tracker tab
 
 - **Lead tracker**: the home-minus-away score margin over the 40 minutes of the game (5-minute periods are added for overtime). It rises above zero when the home team leads and falls below when the away team does. Hover for the time, score, lead and the most recent scoring play.
@@ -303,10 +310,13 @@ pyproject.toml uv project config (Python 3.14, no dependencies)
 fetch_pbp.py   downloads a game page and stores its JSON
 index_games.py builds data/index.json (the web drop-down's game list)
 data/          stored game files, one per game, plus index.json
-web/           static lead tracker page
+web/           the static viewer (WNBA Hindsight)
   model.js     pure game logic: scores, runs, player stats (no DOM)
   chart.js     SVG lead tracker
   statsView.js Player stats tab (sortable tables)
+  theme.js     dark/light theme checkbox
+  style.css    themes (light/dark tokens), header, scoreboard, components
+  fonts/       Barlow Condensed (header wordmark and big numerals), SIL OFL
   app.js       page wiring: drop-down, tabs, checkboxes, run cards
 tests/         Node tests for web/model.js
 index.html     redirects the site root to web/ (used by GitHub Pages)

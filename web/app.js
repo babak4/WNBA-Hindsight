@@ -1,13 +1,14 @@
 import { buildGame, findRuns, runReport, leadSeries, periodName, periodRanges, selectionSummary } from "./model.js";
 import { createChart, timeAt } from "./chart.js";
 import { renderStats } from "./statsView.js";
+import { initTheme } from "./theme.js";
 
 const $ = (id) => document.getElementById(id);
 const els = {
   select: $("game-select"), runs: $("show-runs"), players: $("show-players"), hint: $("players-hint"),
   summary: $("game-summary"), message: $("message"), legend: $("legend"), chart: $("chart"),
   note: $("chart-note"), runList: $("runs"), tableView: $("table-view"), table: $("plays-table"),
-  stats: $("stats"),
+  stats: $("stats"), theme: $("theme-toggle"),
   selection: $("selection"), chips: $("period-chips"), clearSel: $("clear-selection"),
   tabs: [$("tab-lead"), $("tab-stats")],
   panels: [$("panel-lead"), $("panel-stats")],
@@ -79,11 +80,21 @@ async function loadGame(slug) {
   renderAll(entry);
 }
 
+function scoreboardHtml(entry) {
+  const { home, away } = game.teams;
+  const meta = [entry.label, dateText(entry.gameEt), entry.status].filter(Boolean).map(esc).join(" · ");
+  const team = (t, side) => `
+    <div class="sb-team ${side}${t.score > (side === "home" ? away : home).score ? " winner" : ""}">
+      <div class="sb-id"><span class="sb-tri">${esc(t.teamTricode)}</span><span class="sb-name">${esc(t.teamCity)} ${esc(t.teamName)}</span></div>
+      <div class="sb-score">${t.score}</div>
+    </div>`;
+  return `<p class="sb-meta">${meta}</p>
+    <div class="sb-teams">${team(away, "away")}<span class="sb-at" aria-hidden="true">at</span>${team(home, "home")}</div>`;
+}
+
 function renderAll(entry) {
   const { home, away } = game.teams;
-  els.summary.textContent =
-    `${entry.label ? entry.label + " · " : ""}${dateText(entry.gameEt)} · ${entry.status}: ` +
-    `${away.teamCity} ${away.teamName} ${away.score} at ${home.teamCity} ${home.teamName} ${home.score}`;
+  els.summary.innerHTML = scoreboardHtml(entry);
   els.legend.innerHTML =
     `<li><span class="swatch home"></span>${esc(home.teamCity)} ${esc(home.teamName)} (${esc(home.teamTricode)}, home) ahead</li>` +
     `<li><span class="swatch away"></span>${esc(away.teamCity)} ${esc(away.teamName)} (${esc(away.teamTricode)}, away) ahead</li>`;
@@ -279,4 +290,5 @@ els.runs.addEventListener("change", () => {
 });
 els.players.addEventListener("change", syncControls);
 
+initTheme(els.theme);
 init();

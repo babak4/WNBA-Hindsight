@@ -3,17 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WNBA Play-by-Play</title>
-  <link rel="icon" href="data:,">
+  <title>WNBA Hindsight</title>
+  <meta name="description" content="Lead trackers, scoring runs and player ratings for WNBA games.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232ee6c5'/%3E%3Cpath d='M5 22H11V16H16V20H21V10H27' fill='none' stroke='%23101b45' stroke-width='2.6' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='27' cy='10' r='3.2' fill='%23ff7a2f' stroke='%23101b45' stroke-width='1.4'/%3E%3C/svg%3E">
+  <script>
+    /* Set the theme before first paint so there is no flash: saved choice, else the OS setting. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("hindsight-theme"); } catch (e) {}
+      if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="page">
-    <header class="page-head">
-      <h1>WNBA play-by-play</h1>
-      <p id="game-summary" class="summary" aria-live="polite"></p>
-    </header>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <a class="brand" href="./" aria-label="WNBA Hindsight home">
+        <svg class="brand-mark" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true" focusable="false">
+          <rect width="32" height="32" rx="8" fill="#2ee6c5"/>
+          <path d="M5 22H11V16H16V20H21V10H27" fill="none" stroke="#101b45" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="27" cy="10" r="3.2" fill="#ff7a2f" stroke="#101b45" stroke-width="1.4"/>
+        </svg>
+        <h1 class="brand-name"><span class="brand-wnba">WNBA</span> <span class="brand-hind">Hindsight</span></h1>
+      </a>
+      <p class="brand-tag">Lead trackers, runs &amp; player ratings</p>
+      <label class="theme-switch">
+        <input type="checkbox" id="theme-toggle">
+        <span>Dark theme</span>
+      </label>
+    </div>
+  </header>
 
+  <main class="page">
     <section class="controls" aria-label="Game">
       <div class="field">
         <label for="game-select">Game</label>
@@ -22,6 +45,8 @@
     </section>
 
     <p id="message" class="message" role="status" hidden></p>
+
+    <section id="game-summary" class="scoreboard" aria-label="Game summary" aria-live="polite"></section>
 
     <div class="tabs" role="tablist" aria-label="Views">
       <button type="button" role="tab" id="tab-lead" aria-controls="panel-lead" aria-selected="true">Lead tracker</button>
@@ -71,6 +96,8 @@
          <strong>EFF</strong> = (PTS + REB + AST + STL + BLK) − (missed FG + missed FT + TOV).
          Run windows rank only players with at least one recorded action inside the window; team rebounds and team turnovers are not credited to anyone.</p>
       <p>Minutes played are not in the play-by-play data, so the stats tab has no minutes column.</p>
+      <p class="legal">WNBA Hindsight is an independent project, not affiliated with or endorsed by the WNBA. Game data is from wnba.com.
+         Wordmark set in Barlow Condensed (SIL Open Font License).</p>
     </footer>
   </main>
   <script type="module" src="app.js"></script>
