@@ -1,7 +1,14 @@
 // Pure game logic: no DOM. Turns a stored play-by-play file into scoring timeline,
 // runs, and per-player stats. See README.md ("Data schema") for the field meanings.
 
-export const RUN_MIN_POINTS = 7;
+export const RUN_MIN_POINTS = 7;      // default run size
+export const RUN_MIN_ALLOWED = 3;     // smallest run size the UI accepts
+export const RUN_MAX_ALLOWED = 40;    // largest run size the UI accepts
+
+/** Nearest allowed run size (an integer from 3 to 40). */
+export function clampRunSize(n) {
+  return Math.min(RUN_MAX_ALLOWED, Math.max(RUN_MIN_ALLOWED, Math.round(n)));
+}
 
 export function parseClock(iso) {
   const m = /^PT(\d+)M([\d.]+)S$/.exec(iso);

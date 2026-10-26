@@ -1,11 +1,13 @@
-import { buildGame, findRuns, timeouts, runReport, leadSeries, periodName, periodRanges, selectionSummary } from "./model.js";
+import { buildGame, findRuns, timeouts, RUN_MIN_POINTS, RUN_MIN_ALLOWED, RUN_MAX_ALLOWED, runReport, leadSeries, periodName, periodRanges, selectionSummary } from "./model.js";
 import { createChart, timeAt } from "./chart.js";
 import { renderStats } from "./statsView.js";
 import { initTheme } from "./theme.js";
+import { applyInsert, commitRunSize, isAllowedText, liveRunSize } from "./runInput.js";
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  select: $("game-select"), runs: $("show-runs"), timeouts: $("show-timeouts"), players: $("show-players"), hint: $("players-hint"),
+  select: $("game-select"), runs: $("show-runs"), timeouts: $("show-timeouts"),
+  runSize: $("run-size"), runMinus: $("run-minus"), runPlus: $("run-plus"), runHint: $("run-size-hint"), players: $("show-players"), hint: $("players-hint"),
   summary: $("game-summary"), message: $("message"), legend: $("legend"), chart: $("chart"),
   note: $("chart-note"), runList: $("runs"), tableView: $("table-view"), table: $("plays-table"),
   stats: $("stats"), theme: $("theme-toggle"),
@@ -19,6 +21,7 @@ const num = (n, dp = 0) => (n < 0 ? "−" : "") + Math.abs(n).toFixed(dp);
 
 let index = [];
 let game = null, runs = [], chart = null;
+let runSize = RUN_MIN_POINTS; // unanswered points that make a "run"; the user can change it (3-40)
 let selection = null; // {from, to} in elapsed game seconds, picked on the chart
 const cache = new Map();
 
@@ -76,7 +79,7 @@ async function loadGame(slug) {
     return;
   }
   game = cache.get(slug);
-  runs = findRuns(game);
+  runs = findRuns(game, runSize);
   renderAll(entry);
 }
 
@@ -104,6 +107,7 @@ function renderAll(entry) {
     runs,
     showRuns: els.runs.checked,
     timeouts: timeouts(game),
+    runMin: runSize,
     showTimeouts: els.timeouts.checked,
     onRunHover: (n) => setActiveRun(n),
     onSelect: (sel) => setSelection(sel, false),
@@ -126,8 +130,8 @@ function syncControls() {
   const notes = [];
   if (on) {
     notes.push(runs.length
-      ? `Arrows mark ${runs.length} run${runs.length === 1 ? "" : "s"} of 7+ unanswered points, from the lead before the run's first score to the lead after its last.`
-      : "No team scored 7+ unanswered points in this game.");
+      ? `Arrows mark ${runs.length} run${runs.length === 1 ? "" : "s"} of ${runSize}+ unanswered points, from the lead before the run's first score to the lead after its last.`
+      : `No team scored ${runSize}+ unanswered points in this game.`);
   }
   if (els.timeouts.checked) {
     const n = timeouts(game).length;
@@ -300,6 +304,78 @@ els.runs.addEventListener("change", () => {
 });
 els.players.addEventListener("change", syncControls);
 els.timeouts.addEventListener("change", syncControls);
+
+// ---- Run size box -------------------------------------------------------------------------------
+// Guards (rules live in runInput.js): only the digits 0-9 can be entered, never a number above 40, never a
+// leading zero. 1 and 2 must be typeable (they start 10-19 and 20-29), so a value under 3 is not applied
+// while typing; leaving the box raises it to 3.
+const RUN_HINT = `or more unanswered points make a run (${RUN_MIN_ALLOWED}–${RUN_MAX_ALLOWED})`;
+let lastRunText = String(runSize);
+
+function applyRunSize(n) {
+  runSize = n;
+  for (const el of document.querySelectorAll("[data-run-size]")) el.textContent = String(n);
+  els.runMinus.disabled = n <= RUN_MIN_ALLOWED;
+  els.runPlus.disabled = n >= RUN_MAX_ALLOWED;
+  if (!game) return;
+  runs = findRuns(game, n);
+  chart?.setRuns(runs, n);
+  renderRunCards();
+  syncControls();
+}
+
+function runTextChanged() {
+  lastRunText = els.runSize.value;
+  const n = liveRunSize(els.runSize.value);
+  els.runSize.setAttribute("aria-invalid", String(n === null));
+  els.runHint.textContent = n === null ? `Enter a number from ${RUN_MIN_ALLOWED} to ${RUN_MAX_ALLOWED}` : RUN_HINT;
+  if (n !== null && n !== runSize) applyRunSize(n);
+}
+
+function commitRunText() {
+  const n = commitRunSize(els.runSize.value, runSize);
+  els.runSize.value = String(n);
+  runTextChanged();
+  if (n !== runSize) applyRunSize(n);
+}
+
+function stepRunSize(d) {
+  const base = liveRunSize(els.runSize.value) ?? runSize;
+  els.runSize.value = String(Math.min(RUN_MAX_ALLOWED, Math.max(RUN_MIN_ALLOWED, base + d)));
+  runTextChanged();
+}
+
+els.runSize.addEventListener("beforeinput", (ev) => {
+  if (!ev.inputType.startsWith("insert")) return; // deleting is always fine
+  const paste = ev.inputType === "insertFromPaste" || ev.inputType === "insertFromDrop";
+  const inserted = paste ? (ev.dataTransfer?.getData("text/plain") ?? ev.data ?? "") : (ev.data ?? "");
+  const { selectionStart: s, selectionEnd: e, value } = els.runSize;
+  const res = applyInsert(value, s, e, inserted, { paste });
+  if (!res) { ev.preventDefault(); return; }          // not a digit, or the result would be too long / over 40
+  if (paste) {                                         // insert the cleaned-up text ourselves
+    ev.preventDefault();
+    els.runSize.value = res.text;
+    els.runSize.setSelectionRange(res.caret, res.caret);
+    runTextChanged();
+  }
+});
+// Backstop for anything that gets past beforeinput (IME, autofill, older browsers).
+els.runSize.addEventListener("input", () => {
+  const cleaned = els.runSize.value.replace(/\D/g, "");
+  els.runSize.value = isAllowedText(cleaned) ? cleaned : lastRunText;
+  runTextChanged();
+});
+els.runSize.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") { ev.preventDefault(); commitRunText(); els.runSize.select(); }
+  else if (ev.key === "ArrowUp") { ev.preventDefault(); stepRunSize(1); }
+  else if (ev.key === "ArrowDown") { ev.preventDefault(); stepRunSize(-1); }
+});
+els.runSize.addEventListener("blur", commitRunText);
+els.runSize.addEventListener("focus", () => els.runSize.select());
+els.runMinus.addEventListener("click", () => stepRunSize(-1));
+els.runPlus.addEventListener("click", () => stepRunSize(1));
+els.runMinus.disabled = runSize <= RUN_MIN_ALLOWED;
+els.runPlus.disabled = runSize >= RUN_MAX_ALLOWED;
 
 initTheme(els.theme);
 init();

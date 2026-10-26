@@ -104,6 +104,20 @@ for (const f of files) {
     for (let i = 1; i < list.length; i++) assert.ok(list[i].elapsed >= list[i - 1].elapsed);
   });
 
+  test(`${f}: run size changes which runs are found, and larger sizes never find more`, () => {
+    let prev = Infinity;
+    for (let n = 3; n <= 40; n++) {
+      const runs = findRuns(g, n);
+      assert.ok(runs.length <= prev, `n=${n}`);
+      prev = runs.length;
+      for (const r of runs) assert.ok(r.points >= n);
+    }
+    assert.deepEqual(findRuns(g).map((r) => r.firstIndex), findRuns(g, 7).map((r) => r.firstIndex), "default is 7");
+    // a run of 10+ is also a run of 7+
+    const seven = new Set(findRuns(g, 7).map((r) => r.firstIndex));
+    for (const r of findRuns(g, 10)) assert.ok(seven.has(r.firstIndex));
+  });
+
   test(`${f}: lead series is consistent`, () => {
     const s = leadSeries(g);
     assert.equal(s[0].lead, 0);

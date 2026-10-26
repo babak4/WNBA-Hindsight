@@ -253,7 +253,8 @@ It has to be served over HTTP because it loads the JSON with `fetch`; opening `w
 - **Lead tracker**: the home-minus-away score margin over the 40 minutes of the game (5-minute periods are added for overtime). It rises above zero when the home team leads and falls below when the away team does. Hover for the time, score, lead and the most recent scoring play.
 - **Show timeouts**: a checkbox that marks each team timeout with a triangle pointer in that team's chart color (blue for the home team, orange for the away team). Home timeouts point down at the lead line from above and away timeouts point up at it from below, placed at the lead when the timeout was called. Hover a pointer for the time, score and lead. Coach challenges are included, because the feed records them as team timeouts. Official (media) timeouts belong to no team and "Reset" entries are administrative, so neither is shown.
 - **Select a period**: drag across the chart (left to right or right to left) to pick any stretch of the game, or use the **Q1–Q4** buttons (and **OT** if the game has overtime) to pick a whole period. A card appears under the chart with the score change, which team scored how much, the best and worst player by Game Score and by EFF, and an expandable table of every player in that stretch. Click the chart, press the same period button again, or use **Clear selection** to remove it. Selections snap to whole seconds and are not kept when you switch games.
-- **Highlight runs**: draws a numbered arrow over each run, a stretch where one team scores 7 or more points in a row and the other scores none. The arrow goes from the lead before the run's first score to the lead after its last. Runs can span quarters.
+- **Run size**: a box on top of the chart sets how many unanswered points make a run. It starts at **7** and accepts **3 to 40**, with − and + buttons and the up/down arrow keys. Only the digits 0-9 can be typed or pasted (anything else is ignored), a number above 40 or a leading zero can't be entered, and runs update as soon as the number is valid. Because 1 and 2 have to be typeable on the way to 10-29, a value under 3 isn't applied while you type and is raised to 3 when you leave the box (an empty box goes back to the last valid number). The setting applies to the arrows, the run cards and every mention of the run size on the page.
+- **Highlight runs**: draws a numbered arrow over each run, a stretch where one team scores at least the run size in a row (7 by default) and the other scores none. The arrow goes from the lead before the run's first score to the lead after its last. Runs can span quarters.
 - **Best / worst players in each run** (needs run highlighting on; the selected-period card above works without it): one card per run with the best and worst player by Game Score and by EFF, plus an expandable table of every player in the run. Hovering a card shades its window on the chart, and hovering an arrow highlights its card.
 
 ### Player stats tab
@@ -278,7 +279,7 @@ Minutes played are not in the play-by-play data, so there is no minutes column. 
 node --test tests/
 ```
 
-These need Node 22 or newer, and run the logic in `web/model.js` against every game in `data/`. They check, for example, that the final score matches the published score and that the stats derived from the plays add up to the published team box score (points, FG, 3P, FT, assists, steals, blocks and personal fouls match exactly).
+These need Node 22 or newer, and run the logic in `web/model.js` against every game in `data/`. They check, for example, that the final score matches the published score and that the stats derived from the plays add up to the published team box score (points, FG, 3P, FT, assists, steals, blocks and personal fouls match exactly). They also cover the run-size input rules (`web/runInput.js`) and that a larger run size never finds more runs.
 
 ## Hosting on GitHub Pages
 
@@ -316,6 +317,7 @@ web/           the static viewer (WNBA Hindsight)
   chart.js     SVG lead tracker
   statsView.js Player stats tab (sortable tables)
   theme.js     dark/light theme checkbox
+  runInput.js  rules for the run size box (digits only, 3-40), pure and tested
   style.css    themes (light/dark tokens), header, scoreboard, components
   fonts/       Barlow Condensed (header wordmark and big numerals), SIL OFL
   app.js       page wiring: drop-down, tabs, checkboxes, run cards

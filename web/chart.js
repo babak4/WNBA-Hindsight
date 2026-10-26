@@ -21,7 +21,7 @@ let uid = 0;
  * @param {object} g game from buildGame
  * @param {{runs: object[], showRuns: boolean, onRunHover: (n:number|null)=>void,
  *          onSelect: (sel: {from:number,to:number}|null) => void,
- *          timeouts: object[], showTimeouts: boolean}} opts
+ *          timeouts: object[], showTimeouts: boolean, runMin?: number}} opts
  */
 export function createChart(el, g, opts) {
   const series = leadSeries(g);
@@ -29,7 +29,7 @@ export function createChart(el, g, opts) {
   const home = g.teams.home.teamTricode, away = g.teams.away.teamTricode;
   const id = `lt${++uid}`;
   let active = null;
-  let state = { showRuns: opts.showRuns, showTimeouts: !!opts.showTimeouts, selection: null };
+  let state = { showRuns: opts.showRuns, showTimeouts: !!opts.showTimeouts, selection: null, runMin: opts.runMin ?? 7 };
 
   // Zero stays on the chart, but each side only gets as much room as the biggest lead it needs.
   const maxHome = Math.max(0, ...series.map((p) => p.lead));
@@ -145,7 +145,7 @@ export function createChart(el, g, opts) {
     s += `<g class="hover" visibility="hidden"><line class="cross" y1="${m.t}" y2="${m.t + ph}"/><circle class="cross-dot" r="4.5"/></g>`;
 
     const label = `Lead tracker: ${g.teams.home.teamName} ${g.teams.home.score}, ${g.teams.away.teamName} ${g.teams.away.score}. ` +
-      `Largest lead ${maxAbs}. ${state.showRuns ? `${opts.runs.length} runs of 7 or more unanswered points highlighted. ` : ""}` +
+      `Largest lead ${maxAbs}. ${state.showRuns ? `${opts.runs.length} runs of ${state.runMin} or more unanswered points highlighted. ` : ""}` +
       `${state.showTimeouts ? `${(opts.timeouts ?? []).length} team timeouts marked.` : ""}`;
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(label)}">${s}</svg><div class="tooltip" hidden></div>`;
     bind();
@@ -328,6 +328,8 @@ export function createChart(el, g, opts) {
 
   return {
     setShowRuns(v) { state = { ...state, showRuns: v }; draw(); },
+    /** Replace the runs (after the run size changed) and redraw. */
+    setRuns(runs, runMin) { opts.runs = runs; state = { ...state, runMin }; active = null; draw(); },
     setShowTimeouts(v) { state = { ...state, showTimeouts: v }; draw(); },
     /** Set or clear the selected period from outside (e.g. the quarter buttons). */
     setSelection(sel) { state = { ...state, selection: sel }; paintSel(sel); },

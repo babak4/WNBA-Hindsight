@@ -57,7 +57,7 @@
       <section class="controls" aria-label="Lead tracker options">
         <label class="check">
           <input type="checkbox" id="show-runs">
-          <span>Highlight runs <small>(7+ unanswered points)</small></span>
+          <span>Highlight runs <small>(<span data-run-size>7</span>+ unanswered points)</small></span>
         </label>
         <label class="check">
           <input type="checkbox" id="show-timeouts">
@@ -70,6 +70,15 @@
       </section>
 
       <section class="chart-card" aria-label="Lead tracker chart">
+        <div class="run-setting">
+          <label for="run-size" class="run-setting-label">Run size</label>
+          <div class="stepper">
+            <button type="button" id="run-minus" aria-label="Decrease run size">−</button>
+            <input id="run-size" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" spellcheck="false" value="7" aria-describedby="run-size-hint">
+            <button type="button" id="run-plus" aria-label="Increase run size">+</button>
+          </div>
+          <span id="run-size-hint" class="run-hint" aria-live="polite">or more unanswered points make a run (3–40)</span>
+        </div>
         <ul class="legend" id="legend" aria-label="Legend"></ul>
         <div class="brush-bar">
           <span class="brush-help">Select a period: drag across the chart, or pick</span>
@@ -95,7 +104,7 @@
     </div>
 
     <footer class="foot">
-      <p><strong>Run</strong>: one team scores at least 7 points in a row while the other scores none. The run's player window starts right after the opponent's last score and ends with the run's last score, so it includes the stops, steals and misses that produced it.</p>
+      <p><strong>Run</strong>: one team scores at least <span data-run-size>7</span> points in a row while the other scores none (you can change this number above the chart, from 3 to 40). The run's player window starts right after the opponent's last score and ends with the run's last score, so it includes the stops, steals and misses that produced it.</p>
       <p><strong>Game Score</strong> (Hollinger) = PTS + 0.4·FGM − 0.7·FGA − 0.4·(FTA − FTM) + 0.7·OREB + 0.3·DREB + STL + 0.7·AST + 0.7·BLK − 0.4·PF − TOV.
          <strong>EFF</strong> = (PTS + REB + AST + STL + BLK) − (missed FG + missed FT + TOV).
          Run windows rank only players with at least one recorded action inside the window; team rebounds and team turnovers are not credited to anyone.</p>

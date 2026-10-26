@@ -31,6 +31,7 @@
   --focus: #2a78d6;
   --accent: #0b7f78;      /* brand teal, for text and controls on surfaces */
   --accent-soft: #def4f1;
+  --danger: #b42318;
   --on-accent: #ffffff;
 
   --brand-from: #0f1a44;  /* header gradient */
@@ -56,6 +57,7 @@
   --focus: #6aa6ee;
   --accent: #2dd4bf;
   --accent-soft: #11373a;
+  --danger: #ff8a80;
   --on-accent: #06222a;
 
   --brand-from: #080d24;
@@ -67,7 +69,7 @@
     --surface-0: #0a0f20; --surface-1: #131a30; --surface-2: #1a2342; --border: #283253;
     --text-primary: #eaf0ff; --text-secondary: #b8c3e0; --text-muted: #8f9cc0; --grid: #222b47; --zero: #66728f;
     --home: #3987e5; --away: #d95926; --sel: #9085e9; --focus: #6aa6ee;
-    --accent: #2dd4bf; --accent-soft: #11373a; --on-accent: #06222a;
+    --accent: #2dd4bf; --accent-soft: #11373a; --danger: #ff8a80; --on-accent: #06222a;
     --brand-from: #080d24; --brand-to: #25135a;
   }
 }
@@ -330,3 +332,22 @@ th { color: var(--text-secondary); font-weight: 700; position: sticky; top: 0; b
 .foot { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.8rem; max-width: 80ch; }
 .foot strong { color: var(--text-secondary); }
 .foot .legal { margin-top: 14px; }
+
+/* Run size box */
+.run-setting { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 4px 12px; }
+.run-setting-label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); }
+.stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.stepper button {
+  font: inherit; font-size: 1.1rem; font-weight: 700; line-height: 1; width: 34px; border: 0; cursor: pointer;
+  color: var(--accent); background: var(--surface-2);
+}
+.stepper button:hover:not(:disabled) { background: var(--accent-soft); }
+.stepper button:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
+.stepper input {
+  width: 3.4rem; text-align: center; font: inherit; font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: var(--text-primary); background: var(--surface-1); border: 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  padding: 6px 4px; outline-offset: -2px;
+}
+.stepper input[aria-invalid="true"] { color: var(--danger); box-shadow: inset 0 -3px 0 var(--danger); }
+.run-hint { color: var(--text-muted); font-size: 0.82rem; }
+.stepper input[aria-invalid="true"] ~ * , .run-setting:has(input[aria-invalid="true"]) .run-hint { color: var(--danger); }
